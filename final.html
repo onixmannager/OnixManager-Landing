@@ -110,8 +110,8 @@
     border-radius:50%; background:radial-gradient(circle, rgba(232,160,32,0.35), rgba(232,160,32,0.08) 45%, transparent 70%);
     opacity:0; pointer-events:none; will-change:opacity; z-index:1;
   }
-  .sobre-logo-wrap{position:relative; z-index:2; margin-top:2.4rem; display:flex; justify-content:center; perspective:1400px; will-change:transform, opacity;}
-  .sobre-logo-3d{width:190px; height:190px; object-fit:contain; transform-style:preserve-3d; will-change:transform;
+  .sobre-logo-wrap{position:relative; z-index:2; margin-top:2.4rem; display:flex; justify-content:center; perspective:1100px; will-change:opacity;}
+  .sobre-logo-3d{width:190px; height:190px; object-fit:contain; transform-style:preserve-3d; will-change:transform; backface-visibility:hidden;
     filter:drop-shadow(0 30px 45px rgba(0,0,0,0.65)) drop-shadow(0 0 26px rgba(232,160,32,0.28));}
 
   @media (max-width:768px){
@@ -732,17 +732,19 @@
     const rotation = flipProgress * (HERO_FACES - 1) * HERO_ANGLE;
     heroCube.style.transform = `translateZ(-${heroCube.dataset.depth}px) rotateX(${rotation}deg)`;
 
-    // Fase 2 (0.3 → 1): el logo 3D crece como si entráramos dentro de él,
-    // hasta fundirse y dar paso a la siguiente sección
+    // Fase 2 (0.3 → 1): la "cámara" se acerca y gira alrededor del logo,
+    // como si pasara por detrás, hasta dar paso a la siguiente sección
     const zoom = clamp((progress - 0.3) / 0.7, 0, 1);
-    const wobble = reduceMotion ? 0 : Math.sin(idlePhase * 0.6) * 5;
+    const ease = zoom * zoom * (3 - 2 * zoom); // easing suave (smoothstep)
+    const wobble = reduceMotion ? 0 : Math.sin(idlePhase * 0.6) * 4;
 
     if(sobreLogoWrap && sobreLogo){
-      const scale = 1 + zoom * 18;
-      const logoOpacity = zoom < 0.75 ? 1 : clamp(1 - (zoom - 0.75) / 0.25, 0, 1);
-      sobreLogoWrap.style.transform = `scale(${scale})`;
+      const rotY = -ease * 132 + wobble;                 // gira como si la cámara orbitase
+      const rotX = 9 - ease * 15 + wobble * 0.3;          // ligero cabeceo, como una toma de cine
+      const z = ease * 980;                               // avanza en profundidad real (perspectiva)
+      const logoOpacity = zoom < 0.8 ? 1 : clamp(1 - (zoom - 0.8) / 0.2, 0, 1);
+      sobreLogo.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(${z}px)`;
       sobreLogoWrap.style.opacity = logoOpacity;
-      sobreLogo.style.transform = `rotateY(${-16 + wobble}deg) rotateX(${7 - wobble * 0.4}deg)`;
     }
     if(sobreGlow){
       const glowOpacity = zoom < 0.7 ? clamp(zoom / 0.45, 0, 1) : clamp(1 - (zoom - 0.7) / 0.3, 0, 1);
