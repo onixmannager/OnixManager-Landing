@@ -104,7 +104,6 @@
   .sobre-video-canvas{
     position:absolute; inset:0; width:100%; height:100%; z-index:0;
     display:block; opacity:0; pointer-events:none; transition:opacity .4s ease;
-    background:var(--bg);
   }
   .sobre-video-canvas.is-ready{opacity:1;}
 
@@ -115,8 +114,10 @@
   }
   .sobre-video-canvas.as-bg.is-fading{opacity:0;}
 
-  /* Mientras el video actúa de fondo, el body deja ver el canvas fijo por detrás */
-  body.video-bg-active{background:transparent;}
+  /* Mientras el video actúa de fondo, el canvas fijo se ve por encima; se deja
+     var(--bg) (en vez de transparent) como respaldo para no mostrar el blanco
+     por defecto de <html> si el canvas tarda un instante en redibujarse */
+  body.video-bg-active{background:var(--bg);}
 
 
   @media (max-width:768px){
@@ -800,6 +801,14 @@
   let videoPinned = false; // una vez llega al último frame, se queda fijo
   let videoAsBg = false;   // true mientras actúa de fondo en la sección de Proyectos
 
+  // Referencias para poder devolver el canvas a su cara original del cubo 3D.
+  // Es necesario porque .hero-cube/.hero-face aplican `transform` vía JS, y un
+  // descendiente con `position:fixed` se posiciona respecto a ese ancestro
+  // transformado (no respecto al viewport), quedando fuera de pantalla al
+  // hacer scroll. Por eso, mientras actúa de fondo, se saca del cubo.
+  const sobreLogoOriginalParent = sobreLogo ? sobreLogo.parentNode : null;
+  const sobreLogoOriginalNextSibling = sobreLogo ? sobreLogo.nextSibling : null;
+
   function updateHeroCube(){
     const rect = heroDriver.getBoundingClientRect();
     const scrollable = rect.height - window.innerHeight;
@@ -814,27 +823,39 @@
     // Fase 2 (0.35 → 1): con la cara del video ya visible, avanza sus fotogramas
     const videoProgress = clamp((progress - 0.35) / 0.65, 0, 1);
 
-    videoPinned = videoProgress >= 1; // último frame: se queda fijo mientras dure el progreso 1
     if(sobreLogo && !videoPinned){
       sobreVideo.setProgress(videoProgress);
+      if(videoProgress >= 1) videoPinned = true; // último frame: se queda fijo
     }
 
     // Una vez fijado el último frame, el video pasa a ser el fondo de la
     // sección de Proyectos, y se desvanece al terminar esa sección
-    if(sobreLogo && projDriver){
+    if(videoPinned && sobreLogo && projDriver){
       const projRect = projDriver.getBoundingClientRect();
-      const inProjectsSection = videoPinned && projRect.bottom > 0 && projRect.top < window.innerHeight;
+      const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
 
       if(inProjectsSection && !videoAsBg){
         videoAsBg = true;
+        document.body.appendChild(sobreLogo); // sacarlo del cubo 3D transformado
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
+        // Mover un <canvas> en el DOM borra su buffer, y clientWidth/Height
+        // aún pueden reflejar el tamaño antiguo en este mismo tick (antes de
+        // que el navegador aplique el layout de .as-bg). Se redibuja ya y de
+        // nuevo en el siguiente frame para evitar quedar en blanco.
         sobreVideo.resizeCanvas();
+        requestAnimationFrame(() => sobreVideo.resizeCanvas());
       }
       if(!inProjectsSection && videoAsBg){
         videoAsBg = false;
         sobreLogo.classList.remove('as-bg');
         document.body.classList.remove('video-bg-active');
+        // devolverlo a su cara original dentro del cubo 3D
+        if(sobreLogoOriginalParent){
+          sobreLogoOriginalParent.insertBefore(sobreLogo, sobreLogoOriginalNextSibling);
+        }
+        sobreVideo.resizeCanvas();
+        requestAnimationFrame(() => sobreVideo.resizeCanvas());
       }
     }
   }
