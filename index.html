@@ -114,13 +114,24 @@
   .sobre-logo-3d{width:190px; height:190px; object-fit:contain; transform-style:preserve-3d; will-change:transform;
     filter:drop-shadow(0 30px 45px rgba(0,0,0,0.65)) drop-shadow(0 0 26px rgba(232,160,32,0.28));}
 
+  /* Video-scroll del logo 3D (secuencia de fotogramas IA) a pantalla completa dentro del portal */
+  .sobre-video-canvas{
+    width:320px; height:180px; border-radius:18px; display:block;
+    transform-style:preserve-3d; will-change:transform;
+    filter:drop-shadow(0 30px 45px rgba(0,0,0,0.65)) drop-shadow(0 0 26px rgba(232,160,32,0.28));
+    opacity:0; transition:opacity .4s ease;
+  }
+  .sobre-video-canvas.is-ready{opacity:1;}
+
   @media (max-width:768px){
     .hero{flex-direction:column-reverse; text-align:center; gap:1.5rem;}
     .hero-content p{margin-left:auto; margin-right:auto;}
     .hero-parallax{display:none;}
     .sobre-logo-3d{width:130px; height:130px;}
     .sobre-portal-glow{width:560px; height:560px; margin-left:-280px; margin-top:-280px;}
+    .sobre-video-canvas{width:220px; height:124px;}
   }
+
 
   .section{padding:5.5rem 0; border-top:1px solid var(--border);}
   .section-header{text-align:center; margin-bottom:2.5rem;}
@@ -368,7 +379,7 @@
             <h2>CEO y Fundador de Tecnologías Onix, el grupo tecnológico detrás de mis proyectos digitales</h2>
             <div class="sobre-portal-glow" id="sobreGlow"></div>
             <div class="sobre-logo-wrap" id="sobreLogoWrap">
-              <img src="logo-onix-3d.png" alt="Tecnologías Onix" class="sobre-logo-3d" id="sobreLogo">
+              <canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
             </div>
           </div>
         </div>
@@ -714,6 +725,75 @@
     heroCube.dataset.depth = depth;
   }
 
+  /* ---------- Video-scroll del logo 3D (secuencia de fotogramas IA, fase "Sobre mí") ---------- */
+  const sobreVideo = (function(){
+    const canvas = document.getElementById('sobreLogo');
+    if(!canvas) return { setProgress(){} };
+    const ctx = canvas.getContext('2d');
+
+    // Ajusta esta ruta a donde subas la carpeta "logo-frames" (ej. tu repo de GitHub)
+    const FRAME_BASE = 'https://raw.githubusercontent.com/onixmannager/Landingpage/refs/heads/main/logo-frames/frame_';
+    const FRAME_COUNT = 80;
+    const FRAME_PAD = 3;
+    const FRAME_EXT = '.jpg';
+
+    const images = new Array(FRAME_COUNT);
+    let loadedCount = 0;
+    let currentFrame = -1;
+
+    function frameUrl(i){
+      return FRAME_BASE + String(i + 1).padStart(FRAME_PAD, '0') + FRAME_EXT;
+    }
+
+    function resizeCanvas(){
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth || 320;
+      const h = canvas.clientHeight || 180;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if(currentFrame >= 0) draw(currentFrame);
+    }
+
+    function draw(index){
+      const img = images[index];
+      if(!img || !img.complete || !img.naturalWidth) return;
+      currentFrame = index;
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = Math.max(cw / iw, ch / ih);
+      const dw = iw * scale, dh = ih * scale;
+      const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    function preload(){
+      for(let i = 0; i < FRAME_COUNT; i++){
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = function(){
+          loadedCount++;
+          if(i === 0) draw(0);
+          if(loadedCount === FRAME_COUNT) canvas.classList.add('is-ready');
+        };
+        img.src = frameUrl(i);
+        images[i] = img;
+      }
+    }
+
+    function setProgress(progress){
+      const idx = Math.min(FRAME_COUNT - 1, Math.floor(progress * FRAME_COUNT));
+      if(idx !== currentFrame && images[idx] && images[idx].complete) draw(idx);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    preload();
+
+    return { setProgress, resizeCanvas };
+  })();
+
   const sobreFace = document.getElementById('sobreFace');
   const sobreGlow = document.getElementById('sobreGlow');
   const sobreLogoWrap = document.getElementById('sobreLogoWrap');
@@ -742,6 +822,7 @@
       const logoOpacity = zoom < 0.75 ? 1 : clamp(1 - (zoom - 0.75) / 0.25, 0, 1);
       sobreLogoWrap.style.transform = `scale(${scale})`;
       sobreLogoWrap.style.opacity = logoOpacity;
+      sobreVideo.setProgress(zoom);
       sobreLogo.style.transform = `rotateY(${-16 + wobble}deg) rotateX(${7 - wobble * 0.4}deg)`;
     }
     if(sobreGlow){
