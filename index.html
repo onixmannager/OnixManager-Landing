@@ -732,7 +732,7 @@
     const ctx = canvas.getContext('2d');
 
     // Ajusta esta ruta a donde subas la carpeta "logo-frames" (ej. tu repo de GitHub)
-    const FRAME_BASE = 'https://raw.githubusercontent.com/onixmannager/Landingpage/refs/heads/main/logo-frames/frame_';
+    const FRAME_BASE = 'logo-frames/frame_';
     const FRAME_COUNT = 80;
     const FRAME_PAD = 3;
     const FRAME_EXT = '.jpg';
@@ -774,8 +774,13 @@
         img.decoding = 'async';
         img.onload = function(){
           loadedCount++;
-          if(i === 0) draw(0);
-          if(loadedCount === FRAME_COUNT) canvas.classList.add('is-ready');
+          if(i === 0){
+            draw(0);
+            canvas.classList.add('is-ready');
+          }
+        };
+        img.onerror = function(){
+          console.warn('No se pudo cargar el frame:', img.src);
         };
         img.src = frameUrl(i);
         images[i] = img;
@@ -784,7 +789,17 @@
 
     function setProgress(progress){
       const idx = Math.min(FRAME_COUNT - 1, Math.floor(progress * FRAME_COUNT));
-      if(idx !== currentFrame && images[idx] && images[idx].complete) draw(idx);
+      if(idx === currentFrame) return;
+      if(images[idx] && images[idx].complete && images[idx].naturalWidth){
+        draw(idx);
+        return;
+      }
+      // Fallback: si el frame exacto aún no cargó, usa el más cercano ya disponible
+      for(let d = 1; d < FRAME_COUNT; d++){
+        const back = idx - d, fwd = idx + d;
+        if(back >= 0 && images[back] && images[back].complete && images[back].naturalWidth){ draw(back); return; }
+        if(fwd < FRAME_COUNT && images[fwd] && images[fwd].complete && images[fwd].naturalWidth){ draw(fwd); return; }
+      }
     }
 
     window.addEventListener('resize', resizeCanvas);
