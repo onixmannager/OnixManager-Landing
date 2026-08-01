@@ -28,7 +28,7 @@
     --ff-mono:'IBM Plex Mono', monospace;
   }
   *{margin:0; padding:0; box-sizing:border-box;}
-  html{scroll-behavior:smooth; background:var(--bg);}
+  html{scroll-behavior:smooth;}
   body{background:var(--bg); color:var(--text2); font-family:var(--ff-body); line-height:1.6;}
   a{text-decoration:none; color:inherit;}
   img{max-width:100%; display:block;}
@@ -100,25 +100,18 @@
   .hero-scroll-cue .line{width:1px; height:26px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
   @keyframes cue{0%{opacity:.2;} 50%{opacity:1;} 100%{opacity:.2;}}
 
-  /* Canvas del logo: vive FUERA del cubo 3D como elemento fixed a nivel de
-     body, para que su posicionamiento respete siempre el viewport real
-     (un ancestro con transform "atraparía" un position:fixed dentro de sí,
-     que es justo lo que pasaba cuando el canvas vivía dentro de .hero-cube). */
+  /* Cara 1 del cubo: video a pantalla completa que gira junto con el cubo */
   .sobre-video-canvas{
-    position:fixed; inset:0; width:100vw; height:100vh; z-index:1;
-    display:block; opacity:0; pointer-events:none;
-    visibility:hidden;
+    position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    display:block; opacity:0; pointer-events:none; transition:opacity .4s ease;
   }
-  /* Visible mientras se revela la cara 1 del cubo (giro del hero).
-     Sin transition: la opacidad la marca el ángulo de giro en cada frame de
-     scroll, igual que haría backface-visibility en el cubo 3D real; añadir
-     una transición aquí desincroniza el fundido del propio scroll. */
-  .sobre-video-canvas.is-ready.in-hero-face{visibility:visible;}
+  .sobre-video-canvas.is-ready{opacity:1;}
 
-  /* Cuando el último frame queda fijo, el canvas actúa como fondo de
-     pantalla completa (transición suave solo en esta fase, que no depende
-     del scroll frame a frame sino de un cambio de sección). */
-  .sobre-video-canvas.as-bg{opacity:1; visibility:visible; z-index:0; transition:opacity .4s ease;}
+  /* Cuando el último frame queda fijo, el canvas sale del cubo y actúa como
+     fondo de pantalla completa durante la sección de Proyectos */
+  .sobre-video-canvas.as-bg{
+    position:fixed; inset:0; width:100vw; height:100vh; z-index:0;
+  }
   .sobre-video-canvas.as-bg.is-fading{opacity:0;}
 
   /* Mientras el video actúa de fondo, el body deja ver el canvas fijo por detrás */
@@ -372,20 +365,15 @@
         </div>
       </div>
 
-      <div class="hero-face" data-face="1"></div>
+      <div class="hero-face" data-face="1">
+        <canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
+      </div>
 
     </div>
   </div>
 </div>
 
-<!-- El canvas del logo vive FUERA del cubo 3D (que tiene transform propio) para
-     que su position:fixed funcione respecto al viewport real y no quede
-     "atrapado" dentro de un ancestro transformado. Su posición durante la
-     fase del cubo se simula con coordenadas fijas superpuestas en pantalla. -->
-<canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
-
 <!-- ════ MIS PROYECTOS — prisma 3D con scroll ════ -->
-
 <div class="driver" id="projDriver" style="height:900vh;">
   <div class="stage">
     <div class="stage-grid container">
@@ -786,11 +774,6 @@
 
     function setProgress(progress){
       const idx = Math.min(FRAME_COUNT - 1, Math.floor(progress * FRAME_COUNT));
-      setFrame(idx);
-    }
-
-    function setFrame(idx){
-      idx = Math.max(0, Math.min(FRAME_COUNT - 1, idx));
       if(idx === currentFrame) return;
       if(images[idx] && images[idx].complete && images[idx].naturalWidth){
         draw(idx);
@@ -808,21 +791,19 @@
     resizeCanvas();
     preload();
 
-    return { setProgress, setFrame, resizeCanvas, FRAME_COUNT };
+    return { setProgress, resizeCanvas };
   })();
 
   const sobreLogo = document.getElementById('sobreLogo');
   const projDriver = document.getElementById('projDriver');
-  const thirdDriver = document.getElementById('thirdDriver');
   let videoPinned = false; // una vez llega al último frame, se queda fijo
-  let videoAsBg = false;   // true mientras actúa de fondo en Proyectos / Terceros
-  let bgSection = null;    // 'proj' | 'third' | null — qué sección está mostrando el fondo
+  let videoAsBg = false;   // true mientras actúa de fondo en la sección de Proyectos
 
   function updateHeroCube(){
     const rect = heroDriver.getBoundingClientRect();
     const scrollable = rect.height - window.innerHeight;
-    const rawProgress = scrollable > 0 ? (-rect.top) / scrollable : 0; // sin clampear
-    let progress = clamp(rawProgress, 0, 1);
+    let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
+    progress = clamp(progress, 0, 1);
 
     // Fase 1 (0 → 0.35): giro del cubo hasta revelar la cara del video
     const flipProgress = clamp(progress / 0.35, 0, 1);
@@ -835,67 +816,23 @@
     if(sobreLogo && !videoPinned){
       sobreVideo.setProgress(videoProgress);
       if(videoProgress >= 1) videoPinned = true; // último frame: se queda fijo
-      // Si volvemos a subir antes de fijar el último frame, permite "despinnear"
-      if(videoProgress <= 0 && progress < 0.35) videoPinned = false;
     }
 
-    // El canvas se muestra exactamente cuando la cara 1 del cubo quedaría
-    // "de frente" a la cámara con backface-visibility:hidden (igual que en
-    // el cubo 3D original), para no desincronizar el fundido del giro real.
-    // Cara 1 está orientada a rotateX(-HERO_ANGLE) respecto al cubo, así que
-    // su ángulo efectivo es (rotation - HERO_ANGLE); es "de frente" cuando
-    // ese ángulo (normalizado a -180..180) cae en (-90°, 90°).
-    if(sobreLogo && !videoAsBg){
-      const stillInHeroRange = rawProgress < 1.02; // aún dentro del scroll real del hero-driver (progress sin clampear)
-      let effAngle = ((rotation - HERO_ANGLE) % 360 + 360) % 360; // 0..360
-      if(effAngle > 180) effAngle -= 360; // -180..180
-      // Suavizado corto (8°) alrededor del umbral de 90° para evitar un "pop" brusco
-      const FADE_DEG = 8;
-      const faceOpacity = clamp((90 - effAngle) / FADE_DEG, 0, 1);
-      const showDuringHero = stillInHeroRange && faceOpacity > 0;
-      sobreLogo.classList.toggle('in-hero-face', showDuringHero);
-      if(showDuringHero){
-        sobreLogo.style.opacity = String(faceOpacity);
-      } else if(sobreLogo.style.opacity){
-        sobreLogo.style.opacity = '';
-      }
-    }
-
-    // Una vez fijado el último frame de la animación, el canvas puede pasar
-    // a actuar como fondo de pantalla completa en dos tramos distintos:
-    //  - "Mis Proyectos"           (projDriver)  -> un frame intermedio fijo
-    //  - "Proyectos para terceros" (thirdDriver) -> el último frame fijo
-    if(sobreLogo && projDriver && thirdDriver){
-      const MID_FRAME = Math.floor((sobreVideo.FRAME_COUNT - 1) * 0.5);
-      const LAST_FRAME = sobreVideo.FRAME_COUNT - 1;
-
+    // Una vez fijado el último frame, el video pasa a ser el fondo de la
+    // sección de Proyectos, y se desvanece al terminar esa sección
+    if(videoPinned && sobreLogo && projDriver){
       const projRect = projDriver.getBoundingClientRect();
-      const thirdRect = thirdDriver.getBoundingClientRect();
       const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
-      const inThirdSection = thirdRect.bottom > 0 && thirdRect.top < window.innerHeight;
 
-      const targetSection = videoPinned
-        ? (inThirdSection ? 'third' : (inProjectsSection ? 'proj' : null))
-        : null;
-
-      if(targetSection && !videoAsBg){
+      if(inProjectsSection && !videoAsBg){
         videoAsBg = true;
-        sobreLogo.classList.remove('in-hero-face');
-        sobreLogo.classList.remove('is-fading');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
         sobreVideo.resizeCanvas();
-        sobreVideo.setFrame(targetSection === 'third' ? LAST_FRAME : MID_FRAME);
-        bgSection = targetSection;
-      } else if(targetSection && videoAsBg && targetSection !== bgSection){
-        // Pasamos de una sección de fondo a la otra: solo cambia el frame mostrado
-        sobreVideo.setFrame(targetSection === 'third' ? LAST_FRAME : MID_FRAME);
-        bgSection = targetSection;
-      } else if(!targetSection && videoAsBg){
+      }
+      if(!inProjectsSection && videoAsBg){
         videoAsBg = false;
-        bgSection = null;
         sobreLogo.classList.remove('as-bg');
-        sobreLogo.classList.remove('is-fading');
         document.body.classList.remove('video-bg-active');
       }
     }
