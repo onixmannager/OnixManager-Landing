@@ -840,6 +840,7 @@
       if(inProjectsSection && !videoAsBg){
         videoAsBg = true;
         document.body.appendChild(sobreLogo); // sacarlo del cubo 3D transformado
+        sobreLogo.classList.remove('is-fading');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
         // Mover un <canvas> en el DOM borra su buffer, y clientWidth/Height
@@ -849,9 +850,20 @@
         sobreVideo.resizeCanvas();
         requestAnimationFrame(() => sobreVideo.resizeCanvas());
       }
+
+      if(inProjectsSection && videoAsBg){
+        // El fondo solo debe verse justo al entrar en la sección; a partir de
+        // ahí se desvanece (clase .is-fading, ya definida en CSS) para que el
+        // resto de "Mis Proyectos" tenga el mismo fondo que "Proyectos para
+        // terceros", y no el último frame fijo durante todo el scroll.
+        const scrolledIntoSection = -projRect.top;
+        const shouldFade = scrolledIntoSection > window.innerHeight * 0.6;
+        sobreLogo.classList.toggle('is-fading', shouldFade);
+      }
+
       if(!inProjectsSection && videoAsBg){
         videoAsBg = false;
-        sobreLogo.classList.remove('as-bg');
+        sobreLogo.classList.remove('as-bg', 'is-fading');
         document.body.classList.remove('video-bg-active');
         // devolverlo a su cara original dentro del cubo 3D
         if(sobreLogoOriginalParent){
