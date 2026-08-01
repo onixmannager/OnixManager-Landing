@@ -42,10 +42,13 @@
   .header-cta{font-family:var(--ff-mono); font-size:.75rem; border:1px solid var(--gold); color:var(--gold); padding:.5rem 1.1rem; border-radius:30px; transition:background .2s, color .2s;}
   .header-cta:hover{background:var(--gold); color:var(--bg);}
 
-  /* ══════════════════ HERO — CUBO 3D QUE GIRA AL SCROLL ══════════════════ */
-  .hero-driver{position:relative; height:340vh;}
+  /* ══════════════════ HERO ══════════════════ */
+  .hero-driver{position:relative; height:100vh;}
   .hero-stage{position:sticky; top:0; height:100vh; overflow:hidden; perspective:2200px;}
   .hero-cube{position:absolute; inset:0; transform-style:preserve-3d; will-change:transform;}
+
+  /* Tramo de scroll dedicado a avanzar los fotogramas del video de pantalla completa */
+  .video-driver{position:relative; height:260vh;}
   .hero-face{
     position:absolute; inset:0; width:100%; height:100vh;
     display:flex; align-items:center; overflow:hidden;
@@ -100,37 +103,22 @@
   @keyframes cue{0%{opacity:.2;} 50%{opacity:1;} 100%{opacity:.2;}}
 
   /* Cara 1 del cubo: preview de "Sobre mí" que se revela al girar */
-  .hero-face-next{width:100%; max-width:1100px; margin:0 auto; padding:0 1.5rem; text-align:center; position:relative;}
-  .hero-face-next .eyebrow{font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; color:var(--gold); text-transform:uppercase; will-change:opacity;}
-  .hero-face-next h2{font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem; will-change:opacity;}
 
-  /* Logo 3D que "engulle" la pantalla al hacer scroll, como portal hacia la siguiente sección */
-  .sobre-portal-glow{
-    position:absolute; left:50%; top:58%; width:900px; height:900px; margin-left:-450px; margin-top:-450px;
-    border-radius:50%; background:radial-gradient(circle, rgba(232,160,32,0.35), rgba(232,160,32,0.08) 45%, transparent 70%);
-    opacity:0; pointer-events:none; will-change:opacity; z-index:1;
-  }
-  .sobre-logo-wrap{position:relative; z-index:2; margin-top:2.4rem; display:flex; justify-content:center; perspective:1400px; will-change:transform, opacity;}
-  .sobre-logo-3d{width:190px; height:190px; object-fit:contain; transform-style:preserve-3d; will-change:transform;
-    filter:drop-shadow(0 30px 45px rgba(0,0,0,0.65)) drop-shadow(0 0 26px rgba(232,160,32,0.28));}
-
-  /* Video-scroll del logo 3D (secuencia de fotogramas IA) a pantalla completa dentro del portal */
+  /* Video-scroll del logo 3D: aparece a pantalla completa tras el hero y
+     queda fijo como fondo en el último frame mientras el resto hace scroll encima */
   .sobre-video-canvas{
-    width:320px; height:180px; border-radius:18px; display:block;
-    transform-style:preserve-3d; will-change:transform;
-    filter:drop-shadow(0 30px 45px rgba(0,0,0,0.65)) drop-shadow(0 0 26px rgba(232,160,32,0.28));
-    opacity:0; transition:opacity .4s ease;
+    position:fixed; inset:0; width:100vw; height:100vh; z-index:0;
+    display:block; opacity:0; pointer-events:none; transition:opacity .5s ease;
   }
-  .sobre-video-canvas.is-ready{opacity:1;}
+  .sobre-video-canvas.is-ready.in-range{opacity:1;}
+
 
   @media (max-width:768px){
     .hero{flex-direction:column-reverse; text-align:center; gap:1.5rem;}
     .hero-content p{margin-left:auto; margin-right:auto;}
     .hero-parallax{display:none;}
-    .sobre-logo-3d{width:130px; height:130px;}
-    .sobre-portal-glow{width:560px; height:560px; margin-left:-280px; margin-top:-280px;}
-    .sobre-video-canvas{width:220px; height:124px;}
   }
+
 
 
   .section{padding:5.5rem 0; border-top:1px solid var(--border);}
@@ -322,6 +310,10 @@
   </div>
 </div>
 
+<!-- Video-scroll de pantalla completa: aparece tras el hero, avanza con el scroll
+     y queda fijo en el último frame como fondo del resto de la página -->
+<canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
+
 <!-- ════ INICIO — cubo 3D que gira al hacer scroll ════ -->
 <div class="hero-driver" id="heroDriver">
   <div class="hero-stage">
@@ -372,22 +364,12 @@
         </div>
       </div>
 
-      <div class="hero-face" data-face="1">
-        <div class="hero-face-inner">
-          <div class="hero-face-next" id="sobreFace">
-            <div class="eyebrow">Sobre mí</div>
-            <h2>CEO y Fundador de Tecnologías Onix, el grupo tecnológico detrás de mis proyectos digitales</h2>
-            <div class="sobre-portal-glow" id="sobreGlow"></div>
-            <div class="sobre-logo-wrap" id="sobreLogoWrap">
-              <canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
+
+<!-- ════ VIDEO — driver de scroll dedicado que controla el avance de fotogramas ════ -->
+<div class="video-driver" id="videoDriver"></div>
 
 <!-- ════ MIS PROYECTOS — prisma 3D con scroll ════ -->
 <div class="driver" id="projDriver" style="height:900vh;">
@@ -710,19 +692,13 @@
     requestAnimationFrame(renderParallax);
   })();
 
-  /* ---------- Cubo 3D SOLO del Hero (cara 0 -> cara 1 al hacer scroll) ---------- */
+  /* ---------- Hero (una sola cara, sin rotación 3D) ---------- */
   const heroDriver = document.getElementById('heroDriver');
   const heroCube = document.getElementById('heroCube');
   const heroFaces = document.querySelectorAll('.hero-face');
-  const HERO_FACES = heroFaces.length;
-  const HERO_ANGLE = 360 / HERO_FACES;
 
   function layoutHeroCube(){
-    const depth = (window.innerHeight / 2) / Math.tan(Math.PI / HERO_FACES);
-    heroFaces.forEach((f, i) => {
-      f.style.transform = `rotateX(${-i * HERO_ANGLE}deg) translateZ(${depth}px)`;
-    });
-    heroCube.dataset.depth = depth;
+    heroFaces.forEach(f => { f.style.transform = 'none'; });
   }
 
   /* ---------- Video-scroll del logo 3D (secuencia de fotogramas IA, fase "Sobre mí") ---------- */
@@ -809,44 +785,32 @@
     return { setProgress, resizeCanvas };
   })();
 
-  const sobreFace = document.getElementById('sobreFace');
-  const sobreGlow = document.getElementById('sobreGlow');
-  const sobreLogoWrap = document.getElementById('sobreLogoWrap');
   const sobreLogo = document.getElementById('sobreLogo');
-  const sobreEyebrow = sobreFace ? sobreFace.querySelector('.eyebrow') : null;
-  const sobreHeading = sobreFace ? sobreFace.querySelector('h2') : null;
+  const videoDriver = document.getElementById('videoDriver');
+  let videoPinned = false; // una vez llega al último frame, se queda fijo para siempre
 
   function updateHeroCube(){
-    const rect = heroDriver.getBoundingClientRect();
+    if(!videoDriver || !sobreLogo) return;
+
+    const rect = videoDriver.getBoundingClientRect();
+
+    if(rect.top > window.innerHeight){
+      // aún no llegamos al tramo del video: se mantiene oculto
+      sobreLogo.classList.remove('in-range');
+      return;
+    }
+    sobreLogo.classList.add('in-range');
+
+    if(videoPinned) return; // último frame ya fijado, no recalcular más
+
     const scrollable = rect.height - window.innerHeight;
     let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
     progress = clamp(progress, 0, 1);
+    sobreVideo.setProgress(progress);
 
-    // Fase 1 (0 → 0.35): giro de tarjeta hasta revelar "Sobre mí"
-    const flipProgress = clamp(progress / 0.35, 0, 1);
-    const rotation = flipProgress * (HERO_FACES - 1) * HERO_ANGLE;
-    heroCube.style.transform = `translateZ(-${heroCube.dataset.depth}px) rotateX(${rotation}deg)`;
-
-    // Fase 2 (0.3 → 1): el logo 3D crece como si entráramos dentro de él,
-    // hasta fundirse y dar paso a la siguiente sección
-    const zoom = clamp((progress - 0.3) / 0.7, 0, 1);
-    const wobble = reduceMotion ? 0 : Math.sin(idlePhase * 0.6) * 5;
-
-    if(sobreLogoWrap && sobreLogo){
-      const scale = 1 + zoom * 18;
-      const logoOpacity = zoom < 0.75 ? 1 : clamp(1 - (zoom - 0.75) / 0.25, 0, 1);
-      sobreLogoWrap.style.transform = `scale(${scale})`;
-      sobreLogoWrap.style.opacity = logoOpacity;
-      sobreVideo.setProgress(zoom);
-      sobreLogo.style.transform = `rotateY(${-16 + wobble}deg) rotateX(${7 - wobble * 0.4}deg)`;
+    if(progress >= 1){
+      videoPinned = true; // deja de actualizarse: el último frame queda fijo como fondo
     }
-    if(sobreGlow){
-      const glowOpacity = zoom < 0.7 ? clamp(zoom / 0.45, 0, 1) : clamp(1 - (zoom - 0.7) / 0.3, 0, 1);
-      sobreGlow.style.opacity = glowOpacity * 0.9;
-    }
-    const textOpacity = clamp(1 - zoom / 0.22, 0, 1);
-    if(sobreEyebrow) sobreEyebrow.style.opacity = textOpacity;
-    if(sobreHeading) sobreHeading.style.opacity = textOpacity;
   }
 
   /* ---------- Prisma 3D (reutilizable) ---------- */
