@@ -28,7 +28,7 @@
     --ff-mono:'IBM Plex Mono', monospace;
   }
   *{margin:0; padding:0; box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
+  html{scroll-behavior:smooth; background:var(--bg);}
   body{background:var(--bg); color:var(--text2); font-family:var(--ff-body); line-height:1.6;}
   a{text-decoration:none; color:inherit;}
   img{max-width:100%; display:block;}
@@ -100,18 +100,21 @@
   .hero-scroll-cue .line{width:1px; height:26px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
   @keyframes cue{0%{opacity:.2;} 50%{opacity:1;} 100%{opacity:.2;}}
 
-  /* Cara 1 del cubo: video a pantalla completa que gira junto con el cubo */
+  /* Canvas del logo: vive FUERA del cubo 3D como elemento fixed a nivel de
+     body, para que su posicionamiento respete siempre el viewport real
+     (un ancestro con transform "atraparía" un position:fixed dentro de sí,
+     que es justo lo que pasaba cuando el canvas vivía dentro de .hero-cube). */
   .sobre-video-canvas{
-    position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    position:fixed; inset:0; width:100vw; height:100vh; z-index:1;
     display:block; opacity:0; pointer-events:none; transition:opacity .4s ease;
+    visibility:hidden;
   }
-  .sobre-video-canvas.is-ready{opacity:1;}
+  /* Visible mientras se revela la cara 1 del cubo (giro del hero) */
+  .sobre-video-canvas.is-ready.in-hero-face{opacity:1; visibility:visible;}
 
-  /* Cuando el último frame queda fijo, el canvas sale del cubo y actúa como
-     fondo de pantalla completa durante la sección de Proyectos */
-  .sobre-video-canvas.as-bg{
-    position:fixed; inset:0; width:100vw; height:100vh; z-index:0;
-  }
+  /* Cuando el último frame queda fijo, el canvas actúa como fondo de
+     pantalla completa durante la sección de Proyectos */
+  .sobre-video-canvas.as-bg{opacity:1; visibility:visible; z-index:0;}
   .sobre-video-canvas.as-bg.is-fading{opacity:0;}
 
   /* Mientras el video actúa de fondo, el body deja ver el canvas fijo por detrás */
@@ -365,15 +368,20 @@
         </div>
       </div>
 
-      <div class="hero-face" data-face="1">
-        <canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
-      </div>
+      <div class="hero-face" data-face="1"></div>
 
     </div>
   </div>
 </div>
 
+<!-- El canvas del logo vive FUERA del cubo 3D (que tiene transform propio) para
+     que su position:fixed funcione respecto al viewport real y no quede
+     "atrapado" dentro de un ancestro transformado. Su posición durante la
+     fase del cubo se simula con coordenadas fijas superpuestas en pantalla. -->
+<canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
+
 <!-- ════ MIS PROYECTOS — prisma 3D con scroll ════ -->
+
 <div class="driver" id="projDriver" style="height:900vh;">
   <div class="stage">
     <div class="stage-grid container">
@@ -816,23 +824,39 @@
     if(sobreLogo && !videoPinned){
       sobreVideo.setProgress(videoProgress);
       if(videoProgress >= 1) videoPinned = true; // último frame: se queda fijo
+      // Si volvemos a subir antes de fijar el último frame, permite "despinnear"
+      if(videoProgress <= 0 && progress < 0.35) videoPinned = false;
+    }
+
+    // El canvas se muestra en cuanto la cara 1 empieza a revelarse (fase de
+    // giro del cubo) y mientras no esté actuando como fondo de Proyectos.
+    // OJO: "progress" queda clampeado en 1 aunque el hero-driver ya haya
+    // salido del viewport por arriba, así que hay que comprobar también que
+    // el hero-driver siga realmente a la vista (o por encima, no ya superado).
+    if(sobreLogo && !videoAsBg){
+      const stillInHeroRange = rect.bottom > 0; // el hero-driver aún no quedó completamente por encima del viewport
+      const showDuringHero = stillInHeroRange && (flipProgress > 0.05 || videoProgress > 0);
+      sobreLogo.classList.toggle('in-hero-face', showDuringHero);
     }
 
     // Una vez fijado el último frame, el video pasa a ser el fondo de la
     // sección de Proyectos, y se desvanece al terminar esa sección
-    if(videoPinned && sobreLogo && projDriver){
+    if(sobreLogo && projDriver){
       const projRect = projDriver.getBoundingClientRect();
       const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
 
-      if(inProjectsSection && !videoAsBg){
+      if(videoPinned && inProjectsSection && !videoAsBg){
         videoAsBg = true;
+        sobreLogo.classList.remove('in-hero-face');
+        sobreLogo.classList.remove('is-fading');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
         sobreVideo.resizeCanvas();
       }
-      if(!inProjectsSection && videoAsBg){
+      if(videoAsBg && !inProjectsSection){
         videoAsBg = false;
         sobreLogo.classList.remove('as-bg');
+        sobreLogo.classList.remove('is-fading');
         document.body.classList.remove('video-bg-active');
       }
     }
