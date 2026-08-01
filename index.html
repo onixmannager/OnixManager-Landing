@@ -108,9 +108,12 @@
   .sobre-video-canvas.is-ready{opacity:1;}
 
   /* Cuando el último frame queda fijo, el canvas sale del cubo y actúa como
-     fondo de pantalla completa durante la sección de Proyectos */
+     fondo de pantalla completa durante la sección de Proyectos.
+     z-index negativo: así queda garantizado que se pinta detrás de TODO el
+     contenido normal de la página, sin depender de en qué punto del DOM
+     quede insertado tras el reparenting (evita que tape la sección) */
   .sobre-video-canvas.as-bg{
-    position:fixed; inset:0; width:100vw; height:100vh; z-index:0;
+    position:fixed; inset:0; width:100vw; height:100vh; z-index:-1;
   }
   .sobre-video-canvas.as-bg.is-fading{opacity:0;}
 
