@@ -107,6 +107,16 @@
   }
   .sobre-video-canvas.is-ready{opacity:1;}
 
+  /* Cuando el último frame queda fijo, el canvas sale del cubo y actúa como
+     fondo de pantalla completa durante la sección de Proyectos */
+  .sobre-video-canvas.as-bg{
+    position:fixed; inset:0; width:100vw; height:100vh; z-index:0;
+  }
+  .sobre-video-canvas.as-bg.is-fading{opacity:0;}
+
+  /* Mientras el video actúa de fondo, el body deja ver el canvas fijo por detrás */
+  body.video-bg-active{background:transparent;}
+
 
   @media (max-width:768px){
     .hero{flex-direction:column-reverse; text-align:center; gap:1.5rem;}
@@ -785,7 +795,9 @@
   })();
 
   const sobreLogo = document.getElementById('sobreLogo');
+  const projDriver = document.getElementById('projDriver');
   let videoPinned = false; // una vez llega al último frame, se queda fijo
+  let videoAsBg = false;   // true mientras actúa de fondo en la sección de Proyectos
 
   function updateHeroCube(){
     const rect = heroDriver.getBoundingClientRect();
@@ -804,6 +816,25 @@
     if(sobreLogo && !videoPinned){
       sobreVideo.setProgress(videoProgress);
       if(videoProgress >= 1) videoPinned = true; // último frame: se queda fijo
+    }
+
+    // Una vez fijado el último frame, el video pasa a ser el fondo de la
+    // sección de Proyectos, y se desvanece al terminar esa sección
+    if(videoPinned && sobreLogo && projDriver){
+      const projRect = projDriver.getBoundingClientRect();
+      const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
+
+      if(inProjectsSection && !videoAsBg){
+        videoAsBg = true;
+        sobreLogo.classList.add('as-bg');
+        document.body.classList.add('video-bg-active');
+        sobreVideo.resizeCanvas();
+      }
+      if(!inProjectsSection && videoAsBg){
+        videoAsBg = false;
+        sobreLogo.classList.remove('as-bg');
+        document.body.classList.remove('video-bg-active');
+      }
     }
   }
 
