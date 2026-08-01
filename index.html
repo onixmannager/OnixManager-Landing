@@ -115,7 +115,6 @@
   .sobre-video-canvas.as-bg{
     position:fixed; inset:0; width:100vw; height:100vh; z-index:-1;
   }
-  .sobre-video-canvas.as-bg.is-fading{opacity:0;}
 
   /* Mientras el video actúa de fondo, el canvas fijo se ve por encima; se deja
      var(--bg) (en vez de transparent) como respaldo para no mostrar el blanco
@@ -827,12 +826,32 @@
 
     if(sobreLogo && !videoAsBg){
       sobreVideo.setProgress(videoProgress);
+
+      // Fundido final: dentro del propio tramo del video (últimos fotogramas,
+      // todavía dentro del cubo del hero), el canvas se desvanece hasta
+      // opacidad 0 en sincronía con el scroll. Así el fundido queda completado
+      // ANTES de llegar a "Mis Proyectos", en vez de arrancar recién al entrar
+      // en esa sección. Se pisa la transición CSS (que es más lenta y pensada
+      // para el fade-in inicial) para que siga el scroll fotograma a fotograma.
+      const FADE_START = 0.85; // último 15% del tramo del video
+      const fadeProgress = clamp((videoProgress - FADE_START) / (1 - FADE_START), 0, 1);
+      if(fadeProgress > 0){
+        sobreLogo.style.transition = 'none';
+        sobreLogo.style.opacity = String(1 - fadeProgress);
+      } else if(sobreLogo.style.opacity !== ''){
+        // Fuera del tramo de fundido: se devuelve el control a las clases CSS
+        // (.is-ready), que gestionan la aparición inicial del video.
+        sobreLogo.style.opacity = '';
+        sobreLogo.style.transition = '';
+      }
     }
 
     // Cuando la sección de Proyectos entra en pantalla (lo cual solo ocurre
     // tras haber scrolleado todo el hero, ya que #projDriver va justo después
-    // de #heroDriver en el DOM), el video pasa a ser el fondo de esa sección;
-    // al salir de ella, vuelve al cubo y retoma la animación con el scroll
+    // de #heroDriver en el DOM), el canvas se saca del cubo 3D; al salir de
+    // ella, vuelve al cubo y retoma la animación con el scroll. Para entonces
+    // el fundido de arriba ya lo dejó en opacidad 0, así que no vuelve a
+    // aparecer como fondo de la sección.
     if(sobreLogo && projDriver){
       const projRect = projDriver.getBoundingClientRect();
       const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
@@ -840,9 +859,10 @@
       if(inProjectsSection && !videoAsBg){
         videoAsBg = true;
         document.body.appendChild(sobreLogo); // sacarlo del cubo 3D transformado
-        sobreLogo.classList.remove('is-fading');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
+        sobreLogo.style.transition = 'none';
+        sobreLogo.style.opacity = '0'; // ya llega invisible: el fundido se completó durante el scroll del hero
         // Mover un <canvas> en el DOM borra su buffer, y clientWidth/Height
         // aún pueden reflejar el tamaño antiguo en este mismo tick (antes de
         // que el navegador aplique el layout de .as-bg). Se redibuja ya y de
@@ -851,20 +871,12 @@
         requestAnimationFrame(() => sobreVideo.resizeCanvas());
       }
 
-      if(inProjectsSection && videoAsBg){
-        // El fondo solo debe verse justo al entrar en la sección; a partir de
-        // ahí se desvanece (clase .is-fading, ya definida en CSS) para que el
-        // resto de "Mis Proyectos" tenga el mismo fondo que "Proyectos para
-        // terceros", y no el último frame fijo durante todo el scroll.
-        const scrolledIntoSection = -projRect.top;
-        const shouldFade = scrolledIntoSection > window.innerHeight * 0.6;
-        sobreLogo.classList.toggle('is-fading', shouldFade);
-      }
-
       if(!inProjectsSection && videoAsBg){
         videoAsBg = false;
-        sobreLogo.classList.remove('as-bg', 'is-fading');
+        sobreLogo.classList.remove('as-bg');
         document.body.classList.remove('video-bg-active');
+        sobreLogo.style.opacity = '';
+        sobreLogo.style.transition = '';
         // devolverlo a su cara original dentro del cubo 3D
         if(sobreLogoOriginalParent){
           sobreLogoOriginalParent.insertBefore(sobreLogo, sobreLogoOriginalNextSibling);
