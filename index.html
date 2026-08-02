@@ -778,14 +778,28 @@
       ctx.drawImage(img, r.dx, r.dy, r.dw, r.dh);
     }
 
+    // Busca el frame cargado más cercano a idx (mismo criterio que setProgress
+    // y showFrame), para no dejar el recorrido "congelado" si algún frame
+    // puntual todavía no terminó de cargar.
+    function nearestLoaded(idx){
+      if(images[idx] && images[idx].complete && images[idx].naturalWidth) return idx;
+      for(let d = 1; d < FRAME_COUNT; d++){
+        const back = idx - d, fwd = idx + d;
+        if(back >= 0 && images[back] && images[back].complete && images[back].naturalWidth) return back;
+        if(fwd < FRAME_COUNT && images[fwd] && images[fwd].complete && images[fwd].naturalWidth) return fwd;
+      }
+      return -1;
+    }
+
     // Dibuja una mezcla (crossfade) entre dos frames con un velo oscuro
     // encima, para el fondo fijo de "Mis Proyectos" / "Proyectos para
     // terceros": t=0 → frame A puro, t=1 → frame B puro, valores intermedios
     // → transición progresiva entre ambos. El velo se aplica siempre que
     // overlayAlpha > 0, así el texto de la sección se sigue leyendo bien.
     function renderBg(idxA, idxB, t, overlayAlpha){
-      const imgA = images[idxA];
-      if(!imgA || !imgA.complete || !imgA.naturalWidth) return;
+      const resolvedA = nearestLoaded(idxA);
+      if(resolvedA === -1) return;
+      const imgA = images[resolvedA];
       isBgMode = true;
       currentFrame = -1;
       bgState = { a: idxA, b: idxB, t, overlay: overlayAlpha };
@@ -960,17 +974,21 @@
         }
         sobreLogo.style.opacity = String(opacity);
 
-        // Mezcla continua entre el frame de inicio de "Mis Proyectos" y el
-        // frame final: boundaryDist es la distancia (px) al límite entre las
-        // dos secciones (positiva antes, negativa después). La mezcla
-        // termina justo AL LLEGAR al límite (boundaryDist = 0), así
-        // "Proyectos para terceros" arranca siempre ya en el frame final, en
-        // vez de quedarse a medio mezclar en ese punto.
+        // Recorrido real de frames (scrubbing), no un simple cross-dissolve
+        // entre dos fotos fijas: a medida que se acerca el límite con la
+        // sección 2, se recorren uno a uno los frames intermedios entre el
+        // de inicio y el final, exactamente igual que se hace en el hero.
+        // Esto es lo que da la sensación de video fluido -- "cámara hacia
+        // atrás" -- en vez de un simple fundido entre dos imágenes.
+        // boundaryDist es la distancia (px) al límite entre las dos
+        // secciones (positiva antes, negativa después); el recorrido
+        // termina justo AL LLEGAR al límite, así "Proyectos para terceros"
+        // arranca siempre ya en el frame final.
         const boundaryDist = projRect.bottom;
-        const rawT = 1 - boundaryDist / BLEND_WINDOW;
-        const blendT = smoothstep(clamp(rawT, 0, 1));
+        const rawT = clamp(1 - boundaryDist / BLEND_WINDOW, 0, 1);
+        const scrubFrame = Math.round(SECTION1_FRAME_INDEX + rawT * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
 
-        sobreVideo.renderBg(SECTION1_FRAME_INDEX, LAST_FRAME_INDEX, blendT, BG_OVERLAY_ALPHA);
+        sobreVideo.renderBg(scrubFrame, scrubFrame, 0, BG_OVERLAY_ALPHA);
       }
 
       if(!shouldBeBg && videoAsBg){
