@@ -971,18 +971,33 @@
         sobreLogo.style.opacity = String(opacity);
 
         // Recorrido real de frames (scrubbing), no un simple cross-dissolve
-        // entre dos fotos fijas: a medida que se acerca el límite con la
-        // sección 2, se recorren uno a uno los frames intermedios entre el
-        // de inicio y el final, exactamente igual que se hace en el hero.
-        // Esto es lo que da la sensación de video fluido -- "cámara hacia
-        // atrás" -- en vez de un simple fundido entre dos imágenes.
-        // boundaryDist es la distancia (px) al límite entre las dos
-        // secciones (positiva antes, negativa después); el recorrido
-        // termina justo AL LLEGAR al límite, así "Proyectos para terceros"
-        // arranca siempre ya en el frame final.
+        // entre dos fotos fijas. Hay dos tramos:
+        //  1) ENTRADA: al llegar a "Mis Proyectos" el hero acaba de terminar
+        //     justo en LAST_FRAME_INDEX (el cubo 3D recorre 0→79 durante el
+        //     hero), así que el fondo debe arrancar en ESE mismo frame -- el
+        //     "frame real que llega" -- y bajar de forma fluida hasta el
+        //     frame de reposo (SECTION1_FRAME_INDEX). Saltar directo al
+        //     frame de reposo se veía como un error (frames hacia atrás de
+        //     golpe), por eso ahora también se recorre.
+        //  2) SALIDA: cerca del límite con la sección 2 se recorre de nuevo
+        //     desde el frame de reposo hasta LAST_FRAME_INDEX, para que
+        //     "Proyectos para terceros" arranque siempre ya en el frame
+        //     final (igual que antes).
+        // Entre ambos tramos el frame se mantiene fijo en el de reposo (la
+        // sección 1 es muy larga y no hace falta animar todo el recorrido).
+        const ENTRY_WINDOW = window.innerHeight * 1.2;
+        const entryDist = window.innerHeight - projRect.top; // 0 al aparecer, crece al scrollear
+        const entryT = clamp(entryDist / ENTRY_WINDOW, 0, 1);
+        const entryPull = (1 - entryT) * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX);
+
         const boundaryDist = projRect.bottom;
-        const rawT = clamp(1 - boundaryDist / BLEND_WINDOW, 0, 1);
-        const scrubFrame = Math.round(SECTION1_FRAME_INDEX + rawT * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
+        const exitT = clamp(1 - boundaryDist / BLEND_WINDOW, 0, 1);
+        const exitPull = exitT * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX);
+
+        // Los dos tramos nunca se solapan (la sección dura 900vh, muchísimo
+        // más que las ventanas de entrada/salida), así que basta con tomar
+        // el que "empuje" más fuerte hacia el frame final en cada momento.
+        const scrubFrame = Math.round(SECTION1_FRAME_INDEX + Math.max(entryPull, exitPull));
 
         sobreVideo.renderBg(scrubFrame, scrubFrame, 0, BG_OVERLAY_ALPHA);
       }
