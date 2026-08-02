@@ -745,6 +745,9 @@
       if(currentFrame >= 0) draw(currentFrame);
     }
 
+    // Oscurece cada fotograma un poco (capa negra semitransparente encima del frame)
+    const DARK_OVERLAY = 'rgba(0,0,0,0.4)';
+
     function draw(index){
       const img = images[index];
       if(!img || !img.complete || !img.naturalWidth) return;
@@ -756,6 +759,8 @@
       const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
       ctx.clearRect(0, 0, cw, ch);
       ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.fillStyle = DARK_OVERLAY;
+      ctx.fillRect(0, 0, cw, ch);
     }
 
     function preload(){
@@ -792,16 +797,39 @@
       }
     }
 
+    // Fuerza un frame concreto (independiente del progreso de scroll), con el
+    // mismo fallback al frame cargado más cercano si aún no está disponible.
+    function showFrame(index){
+      const idx = Math.max(0, Math.min(FRAME_COUNT - 1, index));
+      if(images[idx] && images[idx].complete && images[idx].naturalWidth){
+        draw(idx);
+        return;
+      }
+      for(let d = 1; d < FRAME_COUNT; d++){
+        const back = idx - d, fwd = idx + d;
+        if(back >= 0 && images[back] && images[back].complete && images[back].naturalWidth){ draw(back); return; }
+        if(fwd < FRAME_COUNT && images[fwd] && images[fwd].complete && images[fwd].naturalWidth){ draw(fwd); return; }
+      }
+    }
+
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
     preload();
 
-    return { setProgress, resizeCanvas };
+    return { setProgress, resizeCanvas, showFrame, FRAME_COUNT };
   })();
 
   const sobreLogo = document.getElementById('sobreLogo');
   const projDriver = document.getElementById('projDriver');
-  let videoAsBg = false;   // true mientras actúa de fondo en la sección de Proyectos
+  const thirdDriver = document.getElementById('thirdDriver');
+  let videoAsBg = false;    // true mientras actúa de fondo en Mis Proyectos o Proyectos para terceros
+  let videoBgSection = null; // 'proj' | 'third' | null — qué sección tiene el fondo fijo ahora mismo
+
+  // Frame que se fija como fondo en cada sección: el del medio para "Mis
+  // Proyectos" y el último para "Proyectos para terceros" (antes ambos
+  // usaban siempre el último frame, el del final del scroll del hero)
+  const MID_FRAME_INDEX = Math.floor((sobreVideo.FRAME_COUNT || 80) / 2);
+  const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 80) - 1;
 
   // Referencias para poder devolver el canvas a su cara original del cubo 3D.
   // Es necesario porque .hero-cube/.hero-face aplican `transform` vía JS, y un
@@ -829,40 +857,55 @@
       sobreVideo.setProgress(videoProgress);
     }
 
-    // Cuando la sección de Proyectos entra en pantalla (lo cual solo ocurre
-    // tras haber scrolleado todo el hero, ya que #projDriver va justo después
-    // de #heroDriver en el DOM), el video pasa a ser el fondo de esa sección;
-    // al salir de ella, vuelve al cubo y retoma la animación con el scroll
-    if(sobreLogo && projDriver){
+    // Cuando "Mis Proyectos" o "Proyectos para terceros" entran en pantalla
+    // (lo cual solo ocurre tras haber scrolleado todo el hero, ya que ambos
+    // drivers van justo después de #heroDriver en el DOM), el video pasa a
+    // ser el fondo de esa sección; al salir de ambas, vuelve al cubo y
+    // retoma la animación con el scroll del hero.
+    if(sobreLogo && projDriver && thirdDriver){
       const projRect = projDriver.getBoundingClientRect();
+      const thirdRect = thirdDriver.getBoundingClientRect();
       const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
+      const inThirdSection = thirdRect.bottom > 0 && thirdRect.top < window.innerHeight;
 
-      if(inProjectsSection && !videoAsBg){
+      const activateBg = (section, frameIndex) => {
         videoAsBg = true;
+        videoBgSection = section;
         document.body.appendChild(sobreLogo); // sacarlo del cubo 3D transformado
         sobreLogo.classList.remove('is-fading');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
+        sobreVideo.showFrame(frameIndex);
         // Mover un <canvas> en el DOM borra su buffer, y clientWidth/Height
         // aún pueden reflejar el tamaño antiguo en este mismo tick (antes de
         // que el navegador aplique el layout de .as-bg). Se redibuja ya y de
         // nuevo en el siguiente frame para evitar quedar en blanco.
         sobreVideo.resizeCanvas();
         requestAnimationFrame(() => sobreVideo.resizeCanvas());
+      };
+
+      // Entrar en "Mis Proyectos": se fija el frame del MEDIO (no el final)
+      if(inProjectsSection && videoBgSection !== 'proj'){
+        activateBg('proj', MID_FRAME_INDEX);
+      }
+      // Entrar en "Proyectos para terceros": se fija el ÚLTIMO frame
+      else if(inThirdSection && videoBgSection !== 'third'){
+        activateBg('third', LAST_FRAME_INDEX);
       }
 
-      if(inProjectsSection && videoAsBg){
-        // El fondo solo debe verse justo al entrar en la sección; a partir de
-        // ahí se desvanece (clase .is-fading, ya definida en CSS) para que el
-        // resto de "Mis Proyectos" tenga el mismo fondo que "Proyectos para
-        // terceros", y no el último frame fijo durante todo el scroll.
-        const scrolledIntoSection = -projRect.top;
+      if(videoAsBg && (inProjectsSection || inThirdSection)){
+        // El fondo solo debe verse justo al entrar en cada sección; a partir
+        // de ahí se desvanece (clase .is-fading, ya definida en CSS) para
+        // que el resto de la sección quede con el mismo fondo de siempre.
+        const activeRect = videoBgSection === 'third' ? thirdRect : projRect;
+        const scrolledIntoSection = -activeRect.top;
         const shouldFade = scrolledIntoSection > window.innerHeight * 0.6;
         sobreLogo.classList.toggle('is-fading', shouldFade);
       }
 
-      if(!inProjectsSection && videoAsBg){
+      if(!inProjectsSection && !inThirdSection && videoAsBg){
         videoAsBg = false;
+        videoBgSection = null;
         sobreLogo.classList.remove('as-bg', 'is-fading');
         document.body.classList.remove('video-bg-active');
         // devolverlo a su cara original dentro del cubo 3D
