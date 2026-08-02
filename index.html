@@ -959,17 +959,30 @@
         }
         sobreLogo.style.opacity = String(opacity);
 
-        // Sin trucos de mezcla ni ventanas artificiales: "Mis Proyectos"
-        // muestra siempre el mismo frame fijo (sin transición alguna) y
-        // "Proyectos para terceros" recorre los frames de forma natural,
-        // 1:1 con su propio scroll (igual que el cubo del hero), avanzando
-        // desde ese mismo frame hasta el último a medida que se scrollea la
-        // sección -- sin transiciones ni saltos.
-        let scrubFrame = SECTION1_FRAME_INDEX;
+        // "Mis Proyectos": el vídeo del hero termina justo en LAST_FRAME_INDEX
+        // exactamente cuando esta sección empieza a asomar (projRect.top ==
+        // innerHeight), así que en vez de congelar de golpe, se sigue
+        // recorriendo frame a frame -- todo en movimiento, nada estático --
+        // durante ese mismo tramo de scroll (una pantalla completa) hasta
+        // que el panel queda fijo (sticky, projRect.top == 0), momento en el
+        // que "la sección ya está introducida" y recién ahí se congela en
+        // SECTION1_FRAME_INDEX, sin ningún salto ni corte.
+        //
+        // "Proyectos para terceros": una vez se sale de "Mis Proyectos", el
+        // vídeo continúa (nunca se corta) recorriendo el resto de los
+        // frames de forma natural, 1:1 con el propio scroll de esta
+        // sección, arrancando justo desde SECTION1_FRAME_INDEX (donde se
+        // quedó congelado) hasta el frame final.
+        let scrubFrame;
         if(inThirdSection){
           const scrollable = thirdRect.height - window.innerHeight;
           const thirdProgress = clamp(scrollable > 0 ? (-thirdRect.top) / scrollable : 1, 0, 1);
           scrubFrame = Math.round(SECTION1_FRAME_INDEX + thirdProgress * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
+        } else {
+          const ENTRY_WINDOW = window.innerHeight; // el mismo tramo que tarda el panel en fijarse
+          const entryDist = window.innerHeight - projRect.top; // 0 al asomar (fin del hero) → ENTRY_WINDOW cuando ya está fijo
+          const entryT = clamp(entryDist / ENTRY_WINDOW, 0, 1);
+          scrubFrame = Math.round(SECTION1_FRAME_INDEX + (1 - entryT) * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
         }
 
         sobreVideo.renderBg(scrubFrame, scrubFrame, 0, BG_OVERLAY_ALPHA);
