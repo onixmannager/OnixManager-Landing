@@ -946,7 +946,6 @@
       }
 
       if(shouldBeBg && videoAsBg){
-        const ENTER_FADE = window.innerHeight * 0.3;
         const EXIT_FADE = window.innerHeight * 0.3;
         // Recorrido (en px de scroll) sobre el que se mezcla el frame de
         // inicio con el frame final antes de llegar al límite con la
@@ -956,18 +955,15 @@
         // apurado justo al final de "Mis Proyectos".
         const BLEND_WINDOW = window.innerHeight * 3;
 
-        // Opacidad del contenedor: solo se usa para la entrada suave desde
-        // el hero y la salida suave al final de "Proyectos para terceros".
-        // La entrada se mide desde que la sección asoma por abajo del
-        // viewport (top === innerHeight), no solo desde que llega arriba
-        // del todo (top === 0): así el fondo ya está visible mientras el
-        // texto sube desde abajo, y no queda un tramo en negro antes de que
-        // el panel se quede fijo (sticky).
+        // Opacidad del contenedor: ya NO hay fundido de entrada. El fondo
+        // pasa a mostrar directamente el frame de scroll (una foto real, no
+        // un color sólido de relleno), así que desvanecer la opacidad aquí
+        // solo dejaba ver el fondo oscuro de la página por debajo del canvas
+        // semi-transparente -- eso era el "negro completo" que se notaba al
+        // llegar a la sección 1. Entra siempre a opacidad completa; el único
+        // fundido que queda es el de salida, al final de "Proyectos para
+        // terceros".
         let opacity = 1;
-        if(inProjectsSection){
-          const t = clamp((window.innerHeight - projRect.top) / ENTER_FADE, 0, 1);
-          opacity = Math.min(opacity, smoothstep(t));
-        }
         if(inThirdSection){
           const t = clamp(1 - (thirdRect.bottom / EXIT_FADE), 0, 1);
           opacity = Math.min(opacity, 1 - smoothstep(t));
