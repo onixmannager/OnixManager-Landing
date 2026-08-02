@@ -892,7 +892,7 @@
   // updateHeroCube), así que la entrada a "Mis Proyectos" debe continuar
   // desde ESE frame real, no desde el último.
   const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 80));
-  const BG_OVERLAY_ALPHA = 0.45; // velo oscuro sobre el fondo fijo, para que el texto se lea bien
+  const BG_OVERLAY_ALPHA = 0; // sin velo oscuro sobre el fondo fijo
 
   // Referencias para poder devolver el canvas a su cara original del cubo 3D.
   // Es necesario porque .hero-cube/.hero-face aplican `transform` vía JS, y un
