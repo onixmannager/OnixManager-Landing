@@ -35,12 +35,28 @@
   :focus-visible{outline:2px solid var(--gold); outline-offset:3px;}
   .container{max-width:1100px; margin:0 auto; padding:0 1.5rem;}
 
-  .header{padding:1.5rem 0; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:200; background:rgba(9,11,15,0.88); backdrop-filter:blur(10px);}
+  .header{padding:1.5rem 0; z-index:200; position:relative;}
   .header-row{display:flex; align-items:center; justify-content:space-between;}
   .logo{font-family:var(--ff-display); font-size:1.4rem; font-weight:700; color:var(--white);}
   .logo span{color:var(--gold);}
   .header-cta{font-family:var(--ff-mono); font-size:.75rem; border:1px solid var(--gold); color:var(--gold); padding:.5rem 1.1rem; border-radius:30px; transition:background .2s, color .2s;}
   .header-cta:hover{background:var(--gold); color:var(--bg);}
+
+  /* ══════════════════ INTRO — VIDEO DE FRAMES A PANTALLA COMPLETA (HEADER) ══════════════════
+     El header clásico se sustituye por un bloque de scroll dedicado que
+     reproduce la secuencia de fotogramas (header-frames/) como fondo fijo a
+     pantalla completa. El logo y el CTA quedan flotando encima, fijos, igual
+     que un header normal. Al terminar su recorrido de scroll, el testigo
+     pasa de forma continua (sin salto) al cubo 3D del Hero, que arranca
+     justo debajo en el DOM. */
+  .intro-driver{position:relative; height:260vh;}
+  .intro-stage{position:sticky; top:0; height:100vh; overflow:hidden;}
+  .intro-canvas{position:absolute; inset:0; width:100%; height:100%; display:block; opacity:0; transition:opacity .5s ease;}
+  .intro-canvas.is-ready{opacity:1;}
+  .intro-veil{position:absolute; inset:0; background:linear-gradient(180deg, rgba(9,11,15,0.55) 0%, rgba(9,11,15,0.15) 30%, rgba(9,11,15,0.35) 100%); pointer-events:none;}
+  .intro-header{position:absolute; top:0; left:0; right:0; padding:1.5rem 0; z-index:5;}
+  .intro-scroll-cue{position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; font-family:var(--ff-mono); font-size:.7rem; color:var(--text2); z-index:5; opacity:.85;}
+  .intro-scroll-cue .line{width:1px; height:26px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
 
   /* ══════════════════ HERO — CUBO 3D QUE GIRA AL SCROLL ══════════════════ */
   .hero-driver{position:relative; height:340vh;}
@@ -116,7 +132,7 @@
      (curva continua ligada 1:1 al scroll), así no hay lag ni saltos frente
      al movimiento del usuario. */
   .sobre-video-canvas.as-bg{
-    position:fixed; inset:0; width:100%; height:100%; z-index:-1;
+    position:fixed; inset:0; width:100vw; height:100vh; z-index:-1;
     transition:none;
   }
 
@@ -314,12 +330,20 @@
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="header-row">
-      <div class="logo">Onix <span>Manager</span></div>
-      <a href="#contacto" class="header-cta">Contáctame</a>
+<!-- ════ INTRO — video de frames a pantalla completa, hace de header ════ -->
+<div class="intro-driver" id="introDriver">
+  <div class="intro-stage">
+    <canvas class="intro-canvas" id="introVideo" aria-hidden="true"></canvas>
+    <div class="intro-veil"></div>
+    <div class="intro-header">
+      <div class="container">
+        <div class="header-row">
+          <div class="logo">Onix <span>Manager</span></div>
+          <a href="#contacto" class="header-cta">Contáctame</a>
+        </div>
+      </div>
     </div>
+    <div class="intro-scroll-cue"><span>SCROLL</span><div class="line"></div></div>
   </div>
 </div>
 
@@ -703,6 +727,108 @@
     requestAnimationFrame(renderParallax);
   })();
 
+  /* ---------- Vídeo-scroll del INTRO (secuencia de fotogramas, sustituye el header) ---------- */
+  const introVideo = (function(){
+    const canvas = document.getElementById('introVideo');
+    if(!canvas) return { setProgress(){} };
+    const ctx = canvas.getContext('2d');
+
+    // Carpeta donde se suben los 80 frames del nuevo vídeo de intro
+    const FRAME_BASE = 'header-frames/frame_';
+    const FRAME_COUNT = 80;
+    const FRAME_PAD = 3;
+    const FRAME_EXT = '.jpg';
+
+    const images = new Array(FRAME_COUNT);
+    let currentFrame = -1;
+
+    function frameUrl(i){
+      return FRAME_BASE + String(i + 1).padStart(FRAME_PAD, '0') + FRAME_EXT;
+    }
+
+    function coverRect(img, cw, ch){
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = Math.max(cw / iw, ch / ih);
+      const dw = iw * scale, dh = ih * scale;
+      return { dw, dh, dx: (cw - dw) / 2, dy: (ch - dh) / 2 };
+    }
+
+    function resizeCanvas(){
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth || 320;
+      const h = canvas.clientHeight || 180;
+      const newW = Math.round(w * dpr), newH = Math.round(h * dpr);
+      if(canvas.width !== newW || canvas.height !== newH){
+        canvas.width = newW;
+        canvas.height = newH;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      if(currentFrame >= 0) draw(currentFrame);
+    }
+
+    function draw(index){
+      const img = images[index];
+      if(!img || !img.complete || !img.naturalWidth) return;
+      currentFrame = index;
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      const r = coverRect(img, cw, ch);
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, r.dx, r.dy, r.dw, r.dh);
+    }
+
+    function preload(){
+      for(let i = 0; i < FRAME_COUNT; i++){
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = function(){
+          if(i === 0){
+            draw(0);
+            canvas.classList.add('is-ready');
+          }
+        };
+        img.onerror = function(){
+          console.warn('No se pudo cargar el frame de intro:', img.src);
+        };
+        img.src = frameUrl(i);
+        images[i] = img;
+      }
+    }
+
+    function setProgress(progress){
+      const idx = Math.min(FRAME_COUNT - 1, Math.floor(progress * FRAME_COUNT));
+      if(idx === currentFrame) return;
+      if(images[idx] && images[idx].complete && images[idx].naturalWidth){
+        draw(idx);
+        return;
+      }
+      // Fallback: si el frame exacto aún no cargó, usa el más cercano ya disponible
+      for(let d = 1; d < FRAME_COUNT; d++){
+        const back = idx - d, fwd = idx + d;
+        if(back >= 0 && images[back] && images[back].complete && images[back].naturalWidth){ draw(back); return; }
+        if(fwd < FRAME_COUNT && images[fwd] && images[fwd].complete && images[fwd].naturalWidth){ draw(fwd); return; }
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    preload();
+
+    return { setProgress, resizeCanvas, FRAME_COUNT };
+  })();
+
+  const introDriver = document.getElementById('introDriver');
+  function updateIntro(){
+    if(!introDriver) return;
+    const rect = introDriver.getBoundingClientRect();
+    const scrollable = rect.height - window.innerHeight;
+    let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
+    progress = clamp(progress, 0, 1);
+    // El último tramo del recorrido se reserva para que el vídeo llegue
+    // "en marcha" justo cuando el cubo del Hero toma el relevo (conecta con
+    // el otro vídeo de frames sin quedarse congelado de golpe antes).
+    introVideo.setProgress(progress);
+  }
+
   /* ---------- Hero (una sola cara, sin rotación 3D) ---------- */
   /* ---------- Cubo 3D SOLO del Hero (cara 0 -> cara 1 al hacer scroll) ---------- */
   const heroDriver = document.getElementById('heroDriver');
@@ -749,14 +875,6 @@
     }
 
     function resizeCanvas(){
-      // Mientras actúa de fondo fijo, el tamaño se fuerza en px explícitos
-      // (ver el reparenting en updateHeroCube) para que coincida siempre
-      // con el que tenía dentro del cubo; hay que mantenerlo actualizado
-      // también si la ventana cambia de tamaño en ese estado.
-      if(canvas.classList.contains('as-bg')){
-        canvas.style.width = document.documentElement.clientWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
-      }
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth || 320;
       const h = canvas.clientHeight || 180;
@@ -1010,8 +1128,6 @@
         videoAsBg = false;
         sobreLogo.classList.remove('as-bg');
         sobreLogo.style.opacity = '';
-        sobreLogo.style.width = '';
-        sobreLogo.style.height = '';
         document.body.classList.remove('video-bg-active');
         // devolverlo a su cara original dentro del cubo 3D
         if(sobreLogoOriginalParent){
@@ -1102,6 +1218,7 @@
   function onScrollOrResize(){
     if(!ticking){
       requestAnimationFrame(() => {
+        updateIntro();
         updateHeroCube();
         prismUpdaters.forEach(fn => fn());
         ticking = false;
@@ -1111,13 +1228,13 @@
   }
 
   window.addEventListener('scroll', onScrollOrResize, {passive:true});
-  window.addEventListener('resize', () => { layoutHeroCube(); onScrollOrResize(); });
+  window.addEventListener('resize', () => { layoutHeroCube(); introVideo.resizeCanvas(); onScrollOrResize(); });
 
   layoutHeroCube();
   onScrollOrResize();
 
   if(!reduceMotion){
-    function idleLoop(){ idlePhase += 0.012; updateHeroCube(); prismUpdaters.forEach(fn => fn()); requestAnimationFrame(idleLoop); }
+    function idleLoop(){ idlePhase += 0.012; updateIntro(); updateHeroCube(); prismUpdaters.forEach(fn => fn()); requestAnimationFrame(idleLoop); }
     requestAnimationFrame(idleLoop);
   }
 })();
