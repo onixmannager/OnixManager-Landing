@@ -870,9 +870,9 @@
   const thirdDriver = document.getElementById('thirdDriver');
   let videoAsBg = false;    // true mientras actúa de fondo en Mis Proyectos o Proyectos para terceros
 
-  // Frame que se usa en cada extremo de la mezcla: el del medio para "Mis
-  // Proyectos" y el último para "Proyectos para terceros"
-  const MID_FRAME_INDEX = Math.floor((sobreVideo.FRAME_COUNT || 80) / 2);
+  // Frame que se usa en cada extremo de la mezcla: el nº53 (índice 52) para
+  // el inicio de "Mis Proyectos" y el último para "Proyectos para terceros"
+  const SECTION1_FRAME_INDEX = 52; // frame_053.jpg (índice = nº de frame - 1)
   const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 80) - 1;
   const BG_OVERLAY_ALPHA = 0.45; // velo oscuro sobre el fondo fijo, para que el texto se lea bien
 
@@ -938,9 +938,14 @@
 
         // Opacidad del contenedor: solo se usa para la entrada suave desde
         // el hero y la salida suave al final de "Proyectos para terceros".
+        // La entrada se mide desde que la sección asoma por abajo del
+        // viewport (top === innerHeight), no solo desde que llega arriba
+        // del todo (top === 0): así el fondo ya está visible mientras el
+        // texto sube desde abajo, y no queda un tramo en negro antes de que
+        // el panel se quede fijo (sticky).
         let opacity = 1;
         if(inProjectsSection){
-          const t = clamp((-projRect.top) / ENTER_FADE, 0, 1);
+          const t = clamp((window.innerHeight - projRect.top) / ENTER_FADE, 0, 1);
           opacity = Math.min(opacity, smoothstep(t));
         }
         if(inThirdSection){
@@ -949,15 +954,17 @@
         }
         sobreLogo.style.opacity = String(opacity);
 
-        // Mezcla continua entre el frame del medio y el final: boundaryDist
-        // es la distancia (px) al límite entre las dos secciones (positiva
-        // antes, negativa después), así la curva no tiene discontinuidades
-        // en el punto de cruce.
+        // Mezcla continua entre el frame de inicio de "Mis Proyectos" y el
+        // frame final: boundaryDist es la distancia (px) al límite entre las
+        // dos secciones (positiva antes, negativa después). La mezcla
+        // termina justo AL LLEGAR al límite (boundaryDist = 0), así
+        // "Proyectos para terceros" arranca siempre ya en el frame final, en
+        // vez de quedarse a medio mezclar en ese punto.
         const boundaryDist = projRect.bottom;
-        const rawT = 0.5 - boundaryDist / BLEND_WINDOW;
+        const rawT = 1 - boundaryDist / BLEND_WINDOW;
         const blendT = smoothstep(clamp(rawT, 0, 1));
 
-        sobreVideo.renderBg(MID_FRAME_INDEX, LAST_FRAME_INDEX, blendT, BG_OVERLAY_ALPHA);
+        sobreVideo.renderBg(SECTION1_FRAME_INDEX, LAST_FRAME_INDEX, blendT, BG_OVERLAY_ALPHA);
       }
 
       if(!shouldBeBg && videoAsBg){
