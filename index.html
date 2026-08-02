@@ -745,8 +745,9 @@
       if(currentFrame >= 0) draw(currentFrame);
     }
 
-    // Oscurece cada fotograma un poco (capa negra semitransparente encima del frame)
+    // Oscurece los fotogramas a partir del 36 (antes de eso se ven sin oscurecer)
     const DARK_OVERLAY = 'rgba(0,0,0,0.4)';
+    const DARK_START_INDEX = 35; // frame 36 (los frames se numeran desde 1)
 
     function draw(index){
       const img = images[index];
@@ -759,8 +760,10 @@
       const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
       ctx.clearRect(0, 0, cw, ch);
       ctx.drawImage(img, dx, dy, dw, dh);
-      ctx.fillStyle = DARK_OVERLAY;
-      ctx.fillRect(0, 0, cw, ch);
+      if(index >= DARK_START_INDEX){
+        ctx.fillStyle = DARK_OVERLAY;
+        ctx.fillRect(0, 0, cw, ch);
+      }
     }
 
     function preload(){
