@@ -888,6 +888,10 @@
   // "Proyectos para terceros" llega de forma natural con su propio scroll.
   const SECTION1_FRAME_INDEX = 33; // frame_034.jpg (índice = nº de frame - 1)
   const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 80) - 1;
+  // El hero ahora termina su recorrido justo al 50% del vídeo (ver
+  // updateHeroCube), así que la entrada a "Mis Proyectos" debe continuar
+  // desde ESE frame real, no desde el último.
+  const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 80));
   const BG_OVERLAY_ALPHA = 0.45; // velo oscuro sobre el fondo fijo, para que el texto se lea bien
 
   // Referencias para poder devolver el canvas a su cara original del cubo 3D.
@@ -909,8 +913,13 @@
     const rotation = flipProgress * (HERO_FACES - 1) * HERO_ANGLE;
     heroCube.style.transform = `translateZ(-${heroCube.dataset.depth}px) rotateX(${rotation}deg)`;
 
-    // Fase 2 (0.35 → 1): con la cara del video ya visible, avanza sus fotogramas
-    const videoProgress = clamp((progress - 0.35) / 0.65, 0, 1);
+    // Fase 2 (0.35 → 1): con la cara del video ya visible, avanza sus
+    // fotogramas -- pero solo hasta la mitad (50%) del recorrido total. El
+    // otro 50% se reserva para más adelante (la entrada a "Mis Proyectos" y
+    // la transición hacia "Proyectos para terceros"), así la sección 1 ya
+    // empieza a asomar cuando el vídeo va aprox. por la mitad, en vez de
+    // tener que esperar a que termine del todo.
+    const videoProgress = clamp((progress - 0.35) / 0.65, 0, 1) * 0.5;
 
     if(sobreLogo && !videoAsBg){
       sobreVideo.setProgress(videoProgress);
@@ -959,14 +968,15 @@
         }
         sobreLogo.style.opacity = String(opacity);
 
-        // "Mis Proyectos": el vídeo del hero termina justo en LAST_FRAME_INDEX
-        // exactamente cuando esta sección empieza a asomar (projRect.top ==
-        // innerHeight), así que en vez de congelar de golpe, se sigue
-        // recorriendo frame a frame -- todo en movimiento, nada estático --
-        // durante ese mismo tramo de scroll (una pantalla completa) hasta
-        // que el panel queda fijo (sticky, projRect.top == 0), momento en el
-        // que "la sección ya está introducida" y recién ahí se congela en
-        // SECTION1_FRAME_INDEX, sin ningún salto ni corte.
+        // "Mis Proyectos": el vídeo del hero termina justo en
+        // HERO_END_FRAME_INDEX (≈50% del recorrido) exactamente cuando esta
+        // sección empieza a asomar (projRect.top == innerHeight), así que en
+        // vez de congelar de golpe, se sigue recorriendo frame a frame --
+        // todo en movimiento, nada estático -- durante ese mismo tramo de
+        // scroll (una pantalla completa) hasta que el panel queda fijo
+        // (sticky, projRect.top == 0), momento en el que "la sección ya está
+        // introducida" y recién ahí se congela en SECTION1_FRAME_INDEX, sin
+        // ningún salto ni corte.
         //
         // "Proyectos para terceros": una vez se sale de "Mis Proyectos", el
         // vídeo continúa (nunca se corta) recorriendo el resto de los
@@ -982,7 +992,7 @@
           const ENTRY_WINDOW = window.innerHeight; // el mismo tramo que tarda el panel en fijarse
           const entryDist = window.innerHeight - projRect.top; // 0 al asomar (fin del hero) → ENTRY_WINDOW cuando ya está fijo
           const entryT = clamp(entryDist / ENTRY_WINDOW, 0, 1);
-          scrubFrame = Math.round(SECTION1_FRAME_INDEX + (1 - entryT) * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
+          scrubFrame = Math.round(SECTION1_FRAME_INDEX + (1 - entryT) * (HERO_END_FRAME_INDEX - SECTION1_FRAME_INDEX));
         }
 
         sobreVideo.renderBg(scrubFrame, scrubFrame, 0, BG_OVERLAY_ALPHA);
