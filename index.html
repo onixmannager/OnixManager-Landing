@@ -116,7 +116,7 @@
      (curva continua ligada 1:1 al scroll), así no hay lag ni saltos frente
      al movimiento del usuario. */
   .sobre-video-canvas.as-bg{
-    position:fixed; inset:0; width:100vw; height:100vh; z-index:-1;
+    position:fixed; inset:0; width:100%; height:100%; z-index:-1;
     transition:none;
   }
 
@@ -749,6 +749,14 @@
     }
 
     function resizeCanvas(){
+      // Mientras actúa de fondo fijo, el tamaño se fuerza en px explícitos
+      // (ver el reparenting en updateHeroCube) para que coincida siempre
+      // con el que tenía dentro del cubo; hay que mantenerlo actualizado
+      // también si la ventana cambia de tamaño en ese estado.
+      if(canvas.classList.contains('as-bg')){
+        canvas.style.width = document.documentElement.clientWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+      }
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth || 320;
       const h = canvas.clientHeight || 180;
@@ -1002,6 +1010,8 @@
         videoAsBg = false;
         sobreLogo.classList.remove('as-bg');
         sobreLogo.style.opacity = '';
+        sobreLogo.style.width = '';
+        sobreLogo.style.height = '';
         document.body.classList.remove('video-bg-active');
         // devolverlo a su cara original dentro del cubo 3D
         if(sobreLogoOriginalParent){
