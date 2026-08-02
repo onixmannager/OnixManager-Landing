@@ -107,15 +107,18 @@
   }
   .sobre-video-canvas.is-ready{opacity:1;}
 
-  /* Cuando el último frame queda fijo, el canvas sale del cubo y actúa como
-     fondo de pantalla completa durante la sección de Proyectos.
+  /* Cuando el frame queda fijo, el canvas sale del cubo y actúa como fondo
+     de pantalla completa durante las secciones de Proyectos.
      z-index negativo: así queda garantizado que se pinta detrás de TODO el
      contenido normal de la página, sin depender de en qué punto del DOM
-     quede insertado tras el reparenting (evita que tape la sección) */
+     quede insertado tras el reparenting (evita que tape la sección).
+     Sin transición: la opacidad se controla en JS en cada tick de scroll
+     (curva continua ligada 1:1 al scroll), así no hay lag ni saltos frente
+     al movimiento del usuario. */
   .sobre-video-canvas.as-bg{
     position:fixed; inset:0; width:100vw; height:100vh; z-index:-1;
+    transition:none;
   }
-  .sobre-video-canvas.as-bg.is-fading{opacity:0;}
 
   /* Mientras el video actúa de fondo, el canvas fijo se ve por encima; se deja
      var(--bg) (en vez de transparent) como respaldo para no mostrar el blanco
@@ -623,6 +626,7 @@
 (function(){
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
+  const smoothstep = (t) => t*t*(3-2*t); // curva de aceleración/frenado suave (ease in-out)
 
   // Reveal on scroll (secciones normales)
   if(!('IntersectionObserver' in window)){
@@ -739,9 +743,17 @@
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth || 320;
       const h = canvas.clientHeight || 180;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const newW = Math.round(w * dpr), newH = Math.round(h * dpr);
+      // Asignar canvas.width/height BORRA el buffer aunque el valor sea el
+      // mismo que ya tenía. Si el tamaño en píxeles no cambió de verdad
+      // (caso típico al reparentar el canvas al fondo fijo, que ya mide lo
+      // mismo que dentro del cubo), nos saltamos la reasignación: esto es
+      // lo que causaba el parpadeo a negro en la transición entre secciones.
+      if(canvas.width !== newW || canvas.height !== newH){
+        canvas.width = newW;
+        canvas.height = newH;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
       if(currentFrame >= 0) draw(currentFrame);
     }
 
@@ -796,6 +808,7 @@
     // mismo fallback al frame cargado más cercano si aún no está disponible.
     function showFrame(index){
       const idx = Math.max(0, Math.min(FRAME_COUNT - 1, index));
+      if(idx === currentFrame) return;
       if(images[idx] && images[idx].complete && images[idx].naturalWidth){
         draw(idx);
         return;
@@ -818,7 +831,6 @@
   const projDriver = document.getElementById('projDriver');
   const thirdDriver = document.getElementById('thirdDriver');
   let videoAsBg = false;    // true mientras actúa de fondo en Mis Proyectos o Proyectos para terceros
-  let videoBgSection = null; // 'proj' | 'third' | null — qué sección tiene el fondo fijo ahora mismo
 
   // Frame que se fija como fondo en cada sección: el del medio para "Mis
   // Proyectos" y el último para "Proyectos para terceros" (antes ambos
@@ -855,60 +867,77 @@
     // Cuando "Mis Proyectos" o "Proyectos para terceros" entran en pantalla
     // (lo cual solo ocurre tras haber scrolleado todo el hero, ya que ambos
     // drivers van justo después de #heroDriver en el DOM), el video pasa a
-    // ser el fondo de esa sección; al salir de ambas, vuelve al cubo y
+    // ser el fondo de esas secciones; al salir de ambas, vuelve al cubo y
     // retoma la animación con el scroll del hero.
+    //
+    // La opacidad se calcula como UNA sola curva continua ligada al scroll
+    // (nada de clases que se activan/desactivan de golpe), repartida en tres
+    // tramos que empalman exactamente en 1 o en 0 entre sí, así no hay
+    // parpadeos ni "reapariciones" bruscas:
+    //   1) Aparece con el frame del MEDIO al entrar en "Mis Proyectos" y se
+    //      desvanece a los pocos px de scroll.
+    //   2) Vuelve a aparecer —ya con el ÚLTIMO frame— según nos acercamos al
+    //      final de "Mis Proyectos", llegando a opacidad 1 justo en el
+    //      límite con "Proyectos para terceros" (el cambio de frame ocurre
+    //      mientras la opacidad todavía es ~0, así el cambio nunca se ve).
+    //   3) Esa misma aparición se desvanece ya dentro de "Proyectos para
+    //      terceros", continuando la curva sin salto en el punto de cruce.
     if(sobreLogo && projDriver && thirdDriver){
       const projRect = projDriver.getBoundingClientRect();
       const thirdRect = thirdDriver.getBoundingClientRect();
       const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
       const inThirdSection = thirdRect.bottom > 0 && thirdRect.top < window.innerHeight;
+      const shouldBeBg = inProjectsSection || inThirdSection;
 
-      const activateBg = (section, frameIndex) => {
+      if(shouldBeBg && !videoAsBg){
         videoAsBg = true;
-        videoBgSection = section;
         document.body.appendChild(sobreLogo); // sacarlo del cubo 3D transformado
-        sobreLogo.classList.remove('is-fading');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
-        sobreVideo.showFrame(frameIndex);
-        // Mover un <canvas> en el DOM borra su buffer, y clientWidth/Height
-        // aún pueden reflejar el tamaño antiguo en este mismo tick (antes de
-        // que el navegador aplique el layout de .as-bg). Se redibuja ya y de
-        // nuevo en el siguiente frame para evitar quedar en blanco.
+        sobreVideo.showFrame(MID_FRAME_INDEX);
         sobreVideo.resizeCanvas();
-        requestAnimationFrame(() => sobreVideo.resizeCanvas());
-      };
-
-      // Entrar en "Mis Proyectos": se fija el frame del MEDIO (no el final)
-      if(inProjectsSection && videoBgSection !== 'proj'){
-        activateBg('proj', MID_FRAME_INDEX);
-      }
-      // Entrar en "Proyectos para terceros": se fija el ÚLTIMO frame
-      else if(inThirdSection && videoBgSection !== 'third'){
-        activateBg('third', LAST_FRAME_INDEX);
       }
 
-      if(videoAsBg && (inProjectsSection || inThirdSection)){
-        // El fondo solo debe verse justo al entrar en cada sección; a partir
-        // de ahí se desvanece (clase .is-fading, ya definida en CSS) para
-        // que el resto de la sección quede con el mismo fondo de siempre.
-        const activeRect = videoBgSection === 'third' ? thirdRect : projRect;
-        const scrolledIntoSection = -activeRect.top;
-        const shouldFade = scrolledIntoSection > window.innerHeight * 0.6;
-        sobreLogo.classList.toggle('is-fading', shouldFade);
+      if(shouldBeBg && videoAsBg){
+        const FADE = window.innerHeight * 0.6;
+
+        // Tramo 1: entrada en "Mis Proyectos" con el frame del medio
+        const enterT = inProjectsSection ? clamp((-projRect.top) / FADE, 0, 1) : 1;
+        const enterOpacity = 1 - smoothstep(enterT);
+
+        // Tramo 2+3: aparición-puente con el último frame, repartida entre
+        // el tramo final de "Mis Proyectos" (sube 0→1) y el tramo inicial
+        // de "Proyectos para terceros" (baja 1→0)
+        let bridgeOpacity;
+        if(inThirdSection){
+          const t = clamp((-thirdRect.top) / FADE, 0, 1);
+          bridgeOpacity = 1 - smoothstep(t);
+        } else {
+          const t = clamp(1 - (projRect.bottom / FADE), 0, 1);
+          bridgeOpacity = smoothstep(t);
+        }
+
+        // El frame se cambia solo mientras esa fase está prácticamente
+        // invisible, para que el cambio de imagen nunca se vea
+        if(bridgeOpacity > 0.02){
+          sobreVideo.showFrame(LAST_FRAME_INDEX);
+        } else if(inProjectsSection && enterOpacity > 0.02){
+          sobreVideo.showFrame(MID_FRAME_INDEX);
+        }
+
+        sobreLogo.style.opacity = String(Math.max(enterOpacity, bridgeOpacity));
       }
 
-      if(!inProjectsSection && !inThirdSection && videoAsBg){
+      if(!shouldBeBg && videoAsBg){
         videoAsBg = false;
-        videoBgSection = null;
-        sobreLogo.classList.remove('as-bg', 'is-fading');
+        sobreLogo.classList.remove('as-bg');
+        sobreLogo.style.opacity = '';
         document.body.classList.remove('video-bg-active');
         // devolverlo a su cara original dentro del cubo 3D
         if(sobreLogoOriginalParent){
           sobreLogoOriginalParent.insertBefore(sobreLogo, sobreLogoOriginalNextSibling);
         }
         sobreVideo.resizeCanvas();
-        requestAnimationFrame(() => sobreVideo.resizeCanvas());
       }
     }
   }
