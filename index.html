@@ -884,9 +884,9 @@
   const thirdDriver = document.getElementById('thirdDriver');
   let videoAsBg = false;    // true mientras actúa de fondo en Mis Proyectos o Proyectos para terceros
 
-  // Frame que se usa en cada extremo de la mezcla: el nº53 (índice 52) para
-  // el inicio de "Mis Proyectos" y el último para "Proyectos para terceros"
-  const SECTION1_FRAME_INDEX = 52; // frame_053.jpg (índice = nº de frame - 1)
+  // Frame fijo de "Mis Proyectos" (sin transición) y frame final, al que
+  // "Proyectos para terceros" llega de forma natural con su propio scroll.
+  const SECTION1_FRAME_INDEX = 33; // frame_034.jpg (índice = nº de frame - 1)
   const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 80) - 1;
   const BG_OVERLAY_ALPHA = 0.45; // velo oscuro sobre el fondo fijo, para que el texto se lea bien
 
@@ -947,22 +947,11 @@
 
       if(shouldBeBg && videoAsBg){
         const EXIT_FADE = window.innerHeight * 0.3;
-        // Recorrido (en px de scroll) sobre el que se mezcla el frame de
-        // inicio con el frame final antes de llegar al límite con la
-        // sección 2. Antes eran solo 0.9 pantallas, lo que dejaba muy poco
-        // margen; ahora son 3 pantallas de scroll, así el cambio de imagen
-        // se nota mucho más gradual y "con recorrido" en vez de sentirse
-        // apurado justo al final de "Mis Proyectos".
-        const BLEND_WINDOW = window.innerHeight * 3;
 
-        // Opacidad del contenedor: ya NO hay fundido de entrada. El fondo
-        // pasa a mostrar directamente el frame de scroll (una foto real, no
-        // un color sólido de relleno), así que desvanecer la opacidad aquí
-        // solo dejaba ver el fondo oscuro de la página por debajo del canvas
-        // semi-transparente -- eso era el "negro completo" que se notaba al
-        // llegar a la sección 1. Entra siempre a opacidad completa; el único
-        // fundido que queda es el de salida, al final de "Proyectos para
-        // terceros".
+        // Opacidad del contenedor: sin fundido de entrada (el fondo se
+        // muestra siempre a opacidad completa). Solo hay un fundido de
+        // salida, al final de "Proyectos para terceros", para volver al
+        // resto de la página.
         let opacity = 1;
         if(inThirdSection){
           const t = clamp(1 - (thirdRect.bottom / EXIT_FADE), 0, 1);
@@ -970,34 +959,18 @@
         }
         sobreLogo.style.opacity = String(opacity);
 
-        // Recorrido real de frames (scrubbing), no un simple cross-dissolve
-        // entre dos fotos fijas. Hay dos tramos:
-        //  1) ENTRADA: al llegar a "Mis Proyectos" el hero acaba de terminar
-        //     justo en LAST_FRAME_INDEX (el cubo 3D recorre 0→79 durante el
-        //     hero), así que el fondo debe arrancar en ESE mismo frame -- el
-        //     "frame real que llega" -- y bajar de forma fluida hasta el
-        //     frame de reposo (SECTION1_FRAME_INDEX). Saltar directo al
-        //     frame de reposo se veía como un error (frames hacia atrás de
-        //     golpe), por eso ahora también se recorre.
-        //  2) SALIDA: cerca del límite con la sección 2 se recorre de nuevo
-        //     desde el frame de reposo hasta LAST_FRAME_INDEX, para que
-        //     "Proyectos para terceros" arranque siempre ya en el frame
-        //     final (igual que antes).
-        // Entre ambos tramos el frame se mantiene fijo en el de reposo (la
-        // sección 1 es muy larga y no hace falta animar todo el recorrido).
-        const ENTRY_WINDOW = window.innerHeight * 1.2;
-        const entryDist = window.innerHeight - projRect.top; // 0 al aparecer, crece al scrollear
-        const entryT = clamp(entryDist / ENTRY_WINDOW, 0, 1);
-        const entryPull = (1 - entryT) * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX);
-
-        const boundaryDist = projRect.bottom;
-        const exitT = clamp(1 - boundaryDist / BLEND_WINDOW, 0, 1);
-        const exitPull = exitT * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX);
-
-        // Los dos tramos nunca se solapan (la sección dura 900vh, muchísimo
-        // más que las ventanas de entrada/salida), así que basta con tomar
-        // el que "empuje" más fuerte hacia el frame final en cada momento.
-        const scrubFrame = Math.round(SECTION1_FRAME_INDEX + Math.max(entryPull, exitPull));
+        // Sin trucos de mezcla ni ventanas artificiales: "Mis Proyectos"
+        // muestra siempre el mismo frame fijo (sin transición alguna) y
+        // "Proyectos para terceros" recorre los frames de forma natural,
+        // 1:1 con su propio scroll (igual que el cubo del hero), avanzando
+        // desde ese mismo frame hasta el último a medida que se scrollea la
+        // sección -- sin transiciones ni saltos.
+        let scrubFrame = SECTION1_FRAME_INDEX;
+        if(inThirdSection){
+          const scrollable = thirdRect.height - window.innerHeight;
+          const thirdProgress = clamp(scrollable > 0 ? (-thirdRect.top) / scrollable : 1, 0, 1);
+          scrubFrame = Math.round(SECTION1_FRAME_INDEX + thirdProgress * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
+        }
 
         sobreVideo.renderBg(scrubFrame, scrubFrame, 0, BG_OVERLAY_ALPHA);
       }
