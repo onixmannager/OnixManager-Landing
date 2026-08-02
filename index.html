@@ -204,8 +204,8 @@
   .panel-text{position:relative; min-height:300px;}
   @media (max-width:900px){ .panel-text{min-height:220px;} }
   @media (max-width:520px){ .panel-text{min-height:190px;} }
-  .facet-text{position:absolute; inset:0; opacity:0; transform:translateY(18px); transition:opacity .55s ease, transform .55s ease; pointer-events:none; max-width:480px;}
-  .facet-text.active{opacity:1; transform:translateY(0); pointer-events:auto;}
+  .facet-text{position:absolute; inset:0; opacity:0; transition:opacity .7s ease-in-out; pointer-events:none; max-width:480px; will-change:opacity;}
+  .facet-text.active{opacity:1; pointer-events:auto;}
   .facet-text .num{font-family:var(--ff-mono); font-size:.78rem; color:var(--gold); letter-spacing:.12em; background:#000; padding:.2rem .6rem; border-radius:6px; display:inline-block;}
   .facet-text h3{font-family:var(--ff-display); font-size:clamp(1.6rem,3vw,2.1rem); color:var(--white); margin:.6rem 0 .9rem; background:#000; padding:.15rem .6rem; border-radius:8px; display:inline-block;}
   @media (max-width:520px){ .facet-text h3{margin:.4rem 0 .5rem;} }
