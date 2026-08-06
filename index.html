@@ -140,55 +140,12 @@
   .section-header h2{font-family:var(--ff-display); font-size:clamp(1.8rem,4vw,2.3rem); font-weight:700; color:var(--white); margin-top:.5rem;}
   .section-header p{color:var(--text); margin-top:.8rem; max-width:560px; margin-left:auto; margin-right:auto;}
 
-  /* ---------- SOBRE MÍ — carrusel de tarjetas apiladas ---------- */
-  .stack-driver{position:relative;}
-  .stack-stage{position:sticky; top:0; height:100vh; overflow:hidden;}
-  .stack-stage::before{
-    content:''; position:absolute; inset:0; z-index:1;
-    background:radial-gradient(ellipse 70% 60% at 50% 30%, rgba(232,160,32,0.07), transparent 65%);
-    pointer-events:none;
-  }
-  .stack-head{position:absolute; top:5.5rem; left:0; right:0; z-index:5; text-align:center; pointer-events:none;}
-  .stack-head .eyebrow{font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; color:var(--gold); text-transform:uppercase;}
-  .stack-head h2{font-family:var(--ff-display); font-size:clamp(1.5rem,3.4vw,2.1rem); color:var(--white); margin-top:.4rem;}
-  .stack-counter{font-family:var(--ff-mono); font-size:.8rem; color:var(--text); margin-top:.6rem; letter-spacing:.08em;}
-  .stack-counter b{color:var(--gold);}
-
-  .stack-cards{position:relative; height:100%; perspective:1800px;}
-  .stack-card{
-    position:absolute; left:50%; top:53%;
-    width:min(620px,88vw); max-height:66vh;
-    background:var(--surface); border:1px solid var(--border); border-radius:26px;
-    padding:2.6rem; display:flex; flex-direction:column; justify-content:flex-end;
-    box-shadow:0 40px 80px -25px rgba(0,0,0,0.75);
-    overflow:hidden;
-  }
-  .stack-card .bignum{
-    position:absolute; top:1.6rem; right:2rem; font-family:var(--ff-display); font-weight:800;
-    font-size:5rem; color:rgba(255,255,255,0.045); line-height:1; pointer-events:none;
-  }
-  .stack-card .sicon{width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:auto; background:color-mix(in srgb, var(--ac,var(--gold)) 15%, transparent); border:1px solid color-mix(in srgb, var(--ac,var(--gold)) 26%, transparent);}
-  .stack-card .sicon i{font-size:1.5rem; color:var(--ac,var(--gold));}
-  .stack-card .stag{font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.15em; text-transform:uppercase; color:var(--ac,var(--gold)); margin-top:1.4rem;}
-  .stack-card h3{font-family:var(--ff-display); font-size:clamp(1.7rem,3.6vw,2.3rem); color:var(--white); margin:.5rem 0 1rem;}
-  .stack-card p{color:var(--text2); font-size:1rem; max-width:480px; margin-bottom:1.6rem;}
-  .stack-card .scta{display:inline-flex; align-items:center; gap:.5rem; font-family:var(--ff-mono); font-size:.85rem; font-weight:500; color:var(--bg); background:var(--ac,var(--gold)); padding:.7rem 1.4rem; border-radius:40px; width:fit-content;}
-  .stack-card .scta i{font-size:.75rem;}
-  .stack-card .ssoon{display:inline-flex; align-items:center; gap:.4rem; font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ac,var(--gold)); border:1px solid color-mix(in srgb, var(--ac,var(--gold)) 30%, transparent); padding:.45rem 1rem; border-radius:40px; width:fit-content;}
-  .stack-card .ssoon::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--ac,var(--gold)); animation:blink 1.4s ease-in-out infinite;}
-  @keyframes blink{0%,100%{opacity:1;} 50%{opacity:.25;}}
-
-  .stack-rail{position:absolute; right:26px; top:50%; transform:translateY(-50%); width:3px; height:min(50vh,340px); background:rgba(255,255,255,0.08); border-radius:3px; z-index:5;}
-  @media (max-width:760px){ .stack-rail{display:none;} }
-  .stack-rail-fill{position:absolute; left:0; top:0; width:100%; height:0%; background:linear-gradient(var(--gold-light),var(--gold)); border-radius:3px;}
-
   .scroll-cue{position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; font-family:var(--ff-mono); font-size:.7rem; color:var(--text); z-index:3; opacity:.85;}
   .scroll-cue .line{width:1px; height:26px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
 
-  @media (max-width:760px){
-    .stack-card{padding:1.9rem; max-height:60vh;}
-    .stack-card .bignum{font-size:3.4rem;}
-  }
+  /* Punto parpadeante de los badges "Próximamente" (.ssoon) en Mis Proyectos */
+  .ssoon::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--ac,var(--gold)); animation:blink 1.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;} 50%{opacity:.25;}}
 
   /* ---------- MIS PROYECTOS / TERCEROS — prisma 3D con scroll ---------- */
   .driver{position:relative;}
@@ -910,11 +867,39 @@
   const sobreLogoOriginalParent = sobreLogo ? sobreLogo.parentNode : null;
   const sobreLogoOriginalNextSibling = sobreLogo ? sobreLogo.nextSibling : null;
 
+  // ── Línea de tiempo única del scroll (fix del salto Hero → Mis Proyectos) ──
+  // ANTES: el frame del video se calculaba con DOS fórmulas independientes:
+  //   (a) dentro del cubo, a partir del progreso de heroDriver
+  //       (getBoundingClientRect, relativo al viewport)
+  //   (b) como fondo fijo, a partir de la distancia a projDriver.top
+  //  Ambas usan sistemas de referencia distintos y solo "coinciden" por
+  //  aproximación de layout, nunca por una relación algebraica exacta, así
+  //  que en el instante justo en que se pasa de (a) a (b) el frame podía
+  //  saltar hacia adelante o hacia atrás en 1-2 unidades (verificado:
+  //  scrollY=2242 → frame 39 con la fórmula (a); en ese mismo scrollY la
+  //  fórmula (b) ya daba 40). Ese microsalto, justo al mismo tiempo que el
+  //  canvas se re-parenta a "fixed", es lo que se percibía como un tirón.
+  //
+  // AHORA: una única variable "y" = scroll acumulado desde el inicio de
+  // heroDriver (medida con offsetTop, que es un valor de layout ESTABLE y
+  // no cambia con el scroll, a diferencia de getBoundingClientRect). Todas
+  // las fases posteriores leen la MISMA variable, así que el punto de
+  // empalme entre fases da matemáticamente el mismo frame en ambos lados
+  // por construcción, no por coincidencia de layout.
+  // offsetTop es un valor de layout estable (no varía con el scroll, a
+  // diferencia de getBoundingClientRect), pero SÍ puede cambiar si el
+  // documento sufre un reflow antes de esta línea -- por ejemplo, por la
+  // carga asíncrona de las fuentes web de Google Fonts, que puede alterar
+  // ligeramente la altura del header. Por eso no es una const fija: se
+  // recalcula junto con el resto del layout en cada resize/load.
+  let heroTop = heroDriver.offsetTop;
+  function recalcHeroTop(){ heroTop = heroDriver.offsetTop; }
+
   function updateHeroCube(){
-    const rect = heroDriver.getBoundingClientRect();
-    const scrollable = rect.height - window.innerHeight;
-    let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
-    progress = clamp(progress, 0, 1);
+    const heroH = heroDriver.offsetHeight;
+    const y = window.scrollY - heroTop; // scroll acumulado desde el inicio del hero (monótono)
+    const scrollable = heroH - window.innerHeight;
+    let progress = scrollable > 0 ? clamp(y / scrollable, 0, 1) : 0;
 
     // Fase 1 (0 → 0.35): giro del cubo hasta revelar la cara del video
     const flipProgress = clamp(progress / 0.35, 0, 1);
@@ -976,15 +961,16 @@
         }
         sobreLogo.style.opacity = String(opacity);
 
-        // "Mis Proyectos": el vídeo del hero termina justo en
-        // HERO_END_FRAME_INDEX (≈50% del recorrido) exactamente cuando esta
-        // sección empieza a asomar (projRect.top == innerHeight), así que en
-        // vez de congelar de golpe, se sigue recorriendo frame a frame --
-        // todo en movimiento, nada estático -- durante ese mismo tramo de
-        // scroll (una pantalla completa) hasta que el panel queda fijo
-        // (sticky, projRect.top == 0), momento en el que "la sección ya está
-        // introducida" y recién ahí se congela en SECTION1_FRAME_INDEX, sin
-        // ningún salto ni corte.
+        // "Mis Proyectos": arranca EXACTAMENTE en el frame en el que el
+        // hero terminó (HERO_END_FRAME_INDEX, = 40) y avanza hasta
+        // SECTION1_FRAME_INDEX (33) a lo largo de una pantalla completa de
+        // scroll, usando la MISMA variable "y" de más arriba -- por eso el
+        // primer frame de esta fase coincide exactamente, número a número,
+        // con el último frame que se dibujó dentro del cubo: en y = heroH
+        // (justo cuando termina el hero y se activa shouldBeBg), progress
+        // vale 1 en la fórmula de arriba (frame 40) y entryT vale 0 aquí
+        // abajo (frame 40 también). Es la misma cifra por construcción, no
+        // por aproximación de layouts distintos.
         //
         // "Proyectos para terceros": una vez se sale de "Mis Proyectos", el
         // vídeo continúa (nunca se corta) recorriendo el resto de los
@@ -993,14 +979,13 @@
         // quedó congelado) hasta el frame final.
         let scrubFrame;
         if(inThirdSection){
-          const scrollable = thirdRect.height - window.innerHeight;
-          const thirdProgress = clamp(scrollable > 0 ? (-thirdRect.top) / scrollable : 1, 0, 1);
+          const scrollable3 = thirdRect.height - window.innerHeight;
+          const thirdProgress = clamp(scrollable3 > 0 ? (-thirdRect.top) / scrollable3 : 1, 0, 1);
           scrubFrame = Math.round(SECTION1_FRAME_INDEX + thirdProgress * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
         } else {
           const ENTRY_WINDOW = window.innerHeight; // el mismo tramo que tarda el panel en fijarse
-          const entryDist = window.innerHeight - projRect.top; // 0 al asomar (fin del hero) → ENTRY_WINDOW cuando ya está fijo
-          const entryT = clamp(entryDist / ENTRY_WINDOW, 0, 1);
-          scrubFrame = Math.round(SECTION1_FRAME_INDEX + (1 - entryT) * (HERO_END_FRAME_INDEX - SECTION1_FRAME_INDEX));
+          const entryT = clamp((y - heroH) / ENTRY_WINDOW, 0, 1); // 0 en y=heroH → 1 una pantalla después
+          scrubFrame = Math.round(HERO_END_FRAME_INDEX + entryT * (SECTION1_FRAME_INDEX - HERO_END_FRAME_INDEX));
         }
 
         sobreVideo.renderBg(scrubFrame, scrubFrame, 0, BG_OVERLAY_ALPHA);
@@ -1062,42 +1047,6 @@
   const updateProjPrism = setupPrism(document.getElementById('projDriver'), document.getElementById('projPrism'), 'projRail', 'proj-panel-text', 9);
   const updateThirdPrism = setupPrism(document.getElementById('thirdDriver'), document.getElementById('thirdPrism'), 'thirdRail', 'third-panel-text', 5);
 
-  /* ---------- Carrusel de tarjetas a pantalla completa (Sobre mí) ---------- */
-  function setupStack(driverEl, cardsWrapId, counterId, railFillId, total){
-    const cardsWrap = document.getElementById(cardsWrapId);
-    const cards = cardsWrap.querySelectorAll('.stack-card');
-    const counter = document.getElementById(counterId);
-    const railFill = document.getElementById(railFillId);
-
-    function update(){
-      const rect = driverEl.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
-      progress = clamp(progress, 0, 1);
-      const raw = progress * (total - 1);
-      const active = Math.round(raw);
-
-      cards.forEach((card, i) => {
-        const L = clamp(raw - i, -1, 1);
-        const absL = Math.abs(L);
-        const opacity = clamp(1 - absL * 1.25, 0, 1);
-        const scale = 1 - absL * 0.24;
-        const z = -absL * 560;
-        const blur = reduceMotion ? 0 : absL * 7;
-        card.style.transform = `translate(-50%,-50%) translateZ(${z}px) scale(${scale})`;
-        card.style.opacity = opacity;
-        card.style.filter = blur > 0.4 ? `blur(${blur}px)` : 'none';
-        card.style.pointerEvents = absL < 0.4 ? 'auto' : 'none';
-        card.style.zIndex = String(100 - Math.round(absL * 60));
-      });
-
-      if(counter) counter.textContent = String(active + 1).padStart(2, '0');
-      if(railFill) railFill.style.height = (progress * 100) + '%';
-    }
-
-    return update;
-  }
-
   let ticking = false;
   function onScrollOrResize(){
     if(!ticking){
@@ -1111,7 +1060,11 @@
   }
 
   window.addEventListener('scroll', onScrollOrResize, {passive:true});
-  window.addEventListener('resize', () => { layoutHeroCube(); onScrollOrResize(); });
+  window.addEventListener('resize', () => { recalcHeroTop(); layoutHeroCube(); onScrollOrResize(); });
+  window.addEventListener('load', () => { recalcHeroTop(); onScrollOrResize(); });
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(() => { recalcHeroTop(); onScrollOrResize(); });
+  }
 
   layoutHeroCube();
   onScrollOrResize();
