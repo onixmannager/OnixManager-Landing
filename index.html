@@ -953,7 +953,17 @@
       const thirdRect = thirdDriver.getBoundingClientRect();
       const inProjectsSection = projRect.bottom > 0 && projRect.top < window.innerHeight;
       const inThirdSection = thirdRect.bottom > 0 && thirdRect.top < window.innerHeight;
-      const shouldBeBg = inProjectsSection || inThirdSection;
+
+      // Margen de scroll (en px) reservado SOLO para el fundido de salida al
+      // terminar "Proyectos para terceros". Se mantiene shouldBeBg=true
+      // durante este tramo extra, aunque thirdRect.bottom ya haya pasado de
+      // 0, para que la opacidad tenga sitio real donde bajar de 1 a 0 antes
+      // de soltar el canvas -- si se corta justo en thirdRect.bottom===0, el
+      // fundido casi nunca llega a completarse y el fondo original (negro
+      // liso de <body>) aparece de golpe en vez de desvanecido.
+      const EXIT_FADE = window.innerHeight * 0.6;
+      const inExitFade = thirdRect.bottom <= 0 && thirdRect.bottom > -EXIT_FADE;
+      const shouldBeBg = inProjectsSection || inThirdSection || inExitFade;
 
       // El canvas NUNCA cambia de padre en el DOM (ver comentario junto a su
       // <canvas> en el HTML): solo se alternan clases. ".in-cube" aplica una
@@ -986,16 +996,16 @@
       }
 
       if(shouldBeBg && videoAsBg){
-        const EXIT_FADE = window.innerHeight * 0.3;
-
         // Opacidad del contenedor: sin fundido de entrada (el fondo se
-        // muestra siempre a opacidad completa). Solo hay un fundido de
-        // salida, al final de "Proyectos para terceros", para volver al
-        // resto de la página.
+        // muestra siempre a opacidad completa mientras se está en
+        // "Mis Proyectos" o "Proyectos para terceros"). El único fundido es
+        // de salida, a lo largo de todo el tramo inExitFade, así se ve como
+        // un desvanecido continuo y no como un corte -- vuelve al negro
+        // liso original (--bg del body) YA desvanecido, no de golpe.
         let opacity = 1;
-        if(inThirdSection){
-          const t = clamp(1 - (thirdRect.bottom / EXIT_FADE), 0, 1);
-          opacity = Math.min(opacity, 1 - smoothstep(t));
+        if(inExitFade){
+          const t = clamp(-thirdRect.bottom / EXIT_FADE, 0, 1);
+          opacity = 1 - smoothstep(t);
         }
         sobreLogo.style.opacity = String(opacity);
 
@@ -1014,12 +1024,16 @@
         // vídeo continúa (nunca se corta) recorriendo el resto de los
         // frames de forma natural, 1:1 con el propio scroll de esta
         // sección, arrancando justo desde SECTION1_FRAME_INDEX (donde se
-        // quedó congelado) hasta el frame final.
+        // quedó congelado) hasta el frame final. Durante inExitFade ya no
+        // queda scroll propio de la sección que consumir (thirdRect.bottom
+        // ya pasó de 0): se deja fijo en el último frame, solo desvaneciendo.
         let scrubFrame;
         if(inThirdSection){
           const scrollable3 = thirdRect.height - window.innerHeight;
           const thirdProgress = clamp(scrollable3 > 0 ? (-thirdRect.top) / scrollable3 : 1, 0, 1);
           scrubFrame = Math.round(SECTION1_FRAME_INDEX + thirdProgress * (LAST_FRAME_INDEX - SECTION1_FRAME_INDEX));
+        } else if(inExitFade){
+          scrubFrame = LAST_FRAME_INDEX;
         } else {
           const ENTRY_WINDOW = window.innerHeight; // el mismo tramo que tarda el panel en fijarse
           const entryT = clamp((y - heroH) / ENTRY_WINDOW, 0, 1); // 0 en y=heroH → 1 una pantalla después
@@ -1038,7 +1052,9 @@
         document.body.classList.remove('video-bg-active');
         // No hay reparenting que revertir: solo se retoma la fase
         // "dentro del cubo" (transform calculado) en el siguiente tick,
-        // ya que shouldBeBg ahora es false.
+        // ya que shouldBeBg ahora es false. En este punto el fundido de
+        // inExitFade ya llegó a opacity=0 en el frame anterior, así que el
+        // corte a "dentro del cubo" no se nota: el canvas ya estaba invisible.
         sobreVideo.resizeCanvas();
       }
     }
