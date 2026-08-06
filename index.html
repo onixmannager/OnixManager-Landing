@@ -26,6 +26,15 @@
     --ff-display:'Playfair Display', Georgia, serif;
     --ff-body:'IBM Plex Sans', sans-serif;
     --ff-mono:'IBM Plex Mono', monospace;
+    /* Sombreado tipográfico unificado: dos capas siempre juntas -- una de
+       contacto muy cercana y oscura (ancla el texto al fondo, evita el look
+       "plano" de un color sólido sobre negro) y otra más ancha y difusa en
+       tono dorado (referencia con la lámina de luz que ya usa el resto de
+       la web: profile-pic, hero-spark, facet3d). --tt-glow es la variante
+       más intensa, para texto que puede caer sobre zonas más claras del
+       fondo-vídeo (eyebrow/h2 de Proyectos) y necesita más separación. */
+    --tt: 0 1px 2px rgba(0,0,0,0.55), 0 2px 14px rgba(232,160,32,0.16);
+    --tt-glow: 0 2px 3px rgba(0,0,0,0.75), 0 0 18px rgba(232,160,32,0.30), 0 0 40px rgba(0,0,0,0.6);
   }
   *{margin:0; padding:0; box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -37,7 +46,7 @@
 
   .header{padding:1.5rem 0; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:200; background:rgba(9,11,15,0.88); backdrop-filter:blur(10px);}
   .header-row{display:flex; align-items:center; justify-content:space-between;}
-  .logo{font-family:var(--ff-display); font-size:1.4rem; font-weight:700; color:var(--white);}
+  .logo{font-family:var(--ff-display); font-size:1.4rem; font-weight:700; color:var(--white); text-shadow:var(--tt);}
   .logo span{color:var(--gold);}
   .header-cta{font-family:var(--ff-mono); font-size:.75rem; border:1px solid var(--gold); color:var(--gold); padding:.5rem 1.1rem; border-radius:30px; transition:background .2s, color .2s;}
   .header-cta:hover{background:var(--gold); color:var(--bg);}
@@ -57,8 +66,8 @@
   /* Cara 0: Hero real */
   .hero{position:relative; display:flex; flex-wrap:wrap; align-items:center; gap:3rem; padding:0 1.5rem; max-width:1100px; margin:0 auto; width:100%; isolation:isolate;}
   .hero-content{flex:1; position:relative; z-index:3;}
-  .hero-badge{display:inline-block; font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; background:var(--gold-dim); color:var(--gold); padding:.2rem .8rem; border-radius:30px; margin-bottom:1rem;}
-  .hero-content h1{font-family:var(--ff-display); font-size:clamp(2rem,5vw,3.2rem); font-weight:800; color:var(--white); line-height:1.2;}
+  .hero-badge{display:inline-block; font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; background:var(--gold-dim); color:var(--gold); padding:.2rem .8rem; border-radius:30px; margin-bottom:1rem; text-shadow:0 1px 2px rgba(0,0,0,0.4);}
+  .hero-content h1{font-family:var(--ff-display); font-size:clamp(2rem,5vw,3.2rem); font-weight:800; color:var(--white); line-height:1.2; text-shadow:var(--tt);}
   .hero-content h1 span{color:var(--gold);}
   .hero-content p{font-size:1rem; color:var(--text); margin:1.2rem 0; max-width:520px;}
   .hero-image{flex:0.6; text-align:center; position:relative; z-index:3; will-change:transform;}
@@ -147,15 +156,36 @@
 
   .section{padding:5.5rem 0; border-top:1px solid var(--border);}
   .section-header{text-align:center; margin-bottom:2.5rem;}
-  .section-header .eyebrow{font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; color:var(--gold); text-transform:uppercase;}
-  .section-header h2{font-family:var(--ff-display); font-size:clamp(1.8rem,4vw,2.3rem); font-weight:700; color:var(--white); margin-top:.5rem;}
+  .section-header .eyebrow{font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; color:var(--gold); text-transform:uppercase; text-shadow:0 1px 2px rgba(0,0,0,0.45);}
+  .section-header h2{font-family:var(--ff-display); font-size:clamp(1.8rem,4vw,2.3rem); font-weight:700; color:var(--white); margin-top:.5rem; text-shadow:var(--tt);}
+
+  /* Variante para eyebrow/h2 que se dibujan directamente sobre el vídeo de
+     fondo (Mis Proyectos / Proyectos para terceros): mismo cristal
+     esmerilado que .facet-text, en vez del bloque negro sólido anterior. */
+  .eyebrow-glass{
+    background:rgba(9,11,15,0.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    padding:.2rem .7rem; border-radius:6px; display:inline-block;
+    border:1px solid rgba(232,160,32,0.18); text-shadow:var(--tt-glow);
+  }
+  .h2-glass{
+    background:rgba(9,11,15,0.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    padding:.2rem .6rem; border-radius:8px; display:inline; box-decoration-break:clone; -webkit-box-decoration-break:clone;
+    text-shadow:var(--tt-glow);
+  }
   .section-header p{color:var(--text); margin-top:.8rem; max-width:560px; margin-left:auto; margin-right:auto;}
 
   .scroll-cue{position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; font-family:var(--ff-mono); font-size:.7rem; color:var(--text); z-index:3; opacity:.85;}
   .scroll-cue .line{width:1px; height:26px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
 
   /* Punto parpadeante de los badges "Próximamente" (.ssoon) en Mis Proyectos */
-  .ssoon::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--ac,var(--gold)); animation:blink 1.4s ease-in-out infinite;}
+  .ssoon{
+    display:inline-flex; align-items:center; gap:.4rem; font-family:var(--ff-mono);
+    font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold);
+    border:1px solid var(--gold-dim); padding:.45rem 1rem; border-radius:40px; margin-top:.6rem;
+    background:rgba(9,11,15,0.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    text-shadow:0 1px 2px rgba(0,0,0,0.5);
+  }
+  .ssoon::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--ac,var(--gold)); animation:blink 1.4s ease-in-out infinite; box-shadow:0 0 6px 1px color-mix(in srgb, var(--ac,var(--gold)) 60%, transparent);}
   @keyframes blink{0%,100%{opacity:1;} 50%{opacity:.25;}}
 
   /* ---------- MIS PROYECTOS / TERCEROS — prisma 3D con scroll ---------- */
@@ -174,10 +204,31 @@
   @media (max-width:520px){ .panel-text{min-height:190px;} }
   .facet-text{position:absolute; inset:0; opacity:0; transition:opacity .7s ease-in-out; pointer-events:none; max-width:480px; will-change:opacity;}
   .facet-text.active{opacity:1; pointer-events:auto;}
-  .facet-text .num{font-family:var(--ff-mono); font-size:.78rem; color:var(--gold); letter-spacing:.12em; background:#000; padding:.2rem .6rem; border-radius:6px; display:inline-block;}
-  .facet-text h3{font-family:var(--ff-display); font-size:clamp(1.6rem,3vw,2.1rem); color:var(--white); margin:.6rem 0 .9rem; background:#000; padding:.15rem .6rem; border-radius:8px; display:inline-block;}
+  /* Legibilidad sobre el vídeo de fondo: en vez de un parche negro sólido
+     (look "pegatina"), cristal esmerilado (blur + rgba muy oscuro) más
+     text-shadow multicapa. El blur solo suaviza lo que hay justo detrás del
+     texto -- no tapa el fondo como un bloque opaco -- y el text-shadow
+     asegura contraste incluso en el instante en que el blur aún no ha
+     terminado de aplicarse (Safari en iOS tarda un frame extra). */
+  .facet-text .num{
+    font-family:var(--ff-mono); font-size:.78rem; color:var(--gold); letter-spacing:.12em;
+    background:rgba(9,11,15,0.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    padding:.2rem .6rem; border-radius:6px; display:inline-block;
+    text-shadow:var(--tt-glow); border:1px solid rgba(232,160,32,0.18);
+  }
+  .facet-text h3{
+    font-family:var(--ff-display); font-size:clamp(1.6rem,3vw,2.1rem); color:var(--white); margin:.6rem 0 .9rem;
+    background:rgba(9,11,15,0.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    padding:.15rem .6rem; border-radius:8px; display:inline-block;
+    text-shadow:var(--tt-glow);
+  }
   @media (max-width:520px){ .facet-text h3{margin:.4rem 0 .5rem;} }
-  .facet-text p{color:var(--white); font-size:1rem; max-width:420px; background:#000; padding:.5rem .7rem; border-radius:8px; display:inline-block; box-decoration-break:clone; -webkit-box-decoration-break:clone;}
+  .facet-text p{
+    color:var(--white); font-size:1rem; max-width:420px;
+    background:rgba(9,11,15,0.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    padding:.5rem .7rem; border-radius:8px; display:inline-block; box-decoration-break:clone; -webkit-box-decoration-break:clone;
+    text-shadow:0 1px 3px rgba(0,0,0,0.7), 0 0 16px rgba(0,0,0,0.5);
+  }
 
   .rail{position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:14px; z-index:3;}
   @media (max-width:900px){ .rail{display:none;} }
@@ -191,14 +242,18 @@
   @media (max-width:900px){ .prism{width:170px; height:210px;} }
   @media (max-width:520px){ .prism{width:140px; height:170px;} }
   .facet3d{
-    position:absolute; inset:0; border-radius:20px; background:var(--surface);
+    position:absolute; inset:0; border-radius:20px;
+    background:linear-gradient(165deg, var(--surface2), var(--surface) 55%, #0d0f15);
     border:1px solid var(--gold-dim); backface-visibility:hidden;
     display:flex; flex-direction:column; justify-content:flex-end; padding:24px;
-    box-shadow:0 30px 60px -20px rgba(0,0,0,0.7);
+    box-shadow:
+      0 30px 60px -20px rgba(0,0,0,0.75),
+      0 4px 24px -6px color-mix(in srgb, var(--ac,var(--gold)) 22%, transparent),
+      inset 0 1px 0 rgba(255,255,255,0.06);
   }
-  .facet3d .ficon{width:44px; height:44px; border-radius:12px; background:var(--gold-dim); border:1px solid rgba(232,160,32,0.25); display:flex; align-items:center; justify-content:center; margin-bottom:auto;}
-  .facet3d .ficon i{font-size:1.3rem; color:var(--gold);}
-  .facet3d .ftitle{font-family:var(--ff-display); font-weight:700; font-size:1.05rem; color:var(--white); margin-top:16px;}
+  .facet3d .ficon{width:44px; height:44px; border-radius:12px; background:var(--gold-dim); border:1px solid rgba(232,160,32,0.25); display:flex; align-items:center; justify-content:center; margin-bottom:auto; box-shadow:0 4px 12px -4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);}
+  .facet3d .ficon i{font-size:1.3rem; color:var(--gold); filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));}
+  .facet3d .ftitle{font-family:var(--ff-display); font-weight:700; font-size:1.05rem; color:var(--white); margin-top:16px; text-shadow:var(--tt);}
   @media (max-width:520px){
     .facet3d{padding:14px; border-radius:14px;}
     .facet3d .ficon{width:32px; height:32px; border-radius:9px;}
@@ -259,8 +314,8 @@
   .btn-submit:active{transform:translateY(0) scale(.98);}
   .contact-note{text-align:center; font-size:.85rem; margin-top:1rem; color:var(--text); background:var(--gold-dim); padding:.8rem; border-radius:16px; border-left:3px solid var(--gold);}
   .success-message{text-align:center; padding:2rem; background:var(--surface); border-radius:24px; border:1px solid var(--border); color:var(--text2); display:none;}
-  .success-message i{font-size:2.5rem; color:var(--gold); margin-bottom:1rem;}
-  .success-message h3{font-family:var(--ff-display); font-size:1.4rem; color:var(--white); margin-bottom:.5rem;}
+  .success-message i{font-size:2.5rem; color:var(--gold); margin-bottom:1rem; filter:drop-shadow(0 2px 8px rgba(232,160,32,0.35));}
+  .success-message h3{font-family:var(--ff-display); font-size:1.4rem; color:var(--white); margin-bottom:.5rem; text-shadow:var(--tt);}
 
   .footer{border-top:1px solid var(--border); padding:2rem 0; text-align:center; font-size:.75rem; color:var(--text);}
 
@@ -364,8 +419,8 @@
     <div class="stage-grid container">
       <div>
         <div class="section-header" style="text-align:left; margin-bottom:2rem;">
-          <div class="eyebrow" style="font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; color:var(--gold); text-transform:uppercase; background:#000; padding:.2rem .7rem; border-radius:6px; display:inline-block;">Mis proyectos</div>
-          <h2 style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem; background:#000; padding:.2rem .6rem; border-radius:8px; display:inline; box-decoration-break:clone; -webkit-box-decoration-break:clone;">Plataformas y servicios activos que he creado</h2>
+          <div class="eyebrow eyebrow-glass">Mis proyectos</div>
+          <h2 class="h2-glass" style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem;">Plataformas y servicios activos que he creado</h2>
         </div>
         <div class="panel-text" id="proj-panel-text">
           <div class="facet-text active" data-i="0">
@@ -402,25 +457,25 @@
             <span class="num">06</span>
             <h3>Zona VIP Trends</h3>
             <p>Agencia de publicidad automatizada y gestión de redes sociales.</p>
-            <span class="ssoon" style="display:inline-flex; align-items:center; gap:.4rem; font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px solid var(--gold-dim); padding:.45rem 1rem; border-radius:40px; margin-top:.6rem; background:#000;">Próximamente</span>
+            <span class="ssoon">Próximamente</span>
           </div>
           <div class="facet-text" data-i="6">
             <span class="num">07</span>
             <h3>LeadGen Ai</h3>
             <p>Captador de clientes investigados con IA, campañas de email marketing y telefónica.</p>
-            <span class="ssoon" style="display:inline-flex; align-items:center; gap:.4rem; font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px solid var(--gold-dim); padding:.45rem 1rem; border-radius:40px; margin-top:.6rem; background:#000;">Próximamente</span>
+            <span class="ssoon">Próximamente</span>
           </div>
           <div class="facet-text" data-i="7">
             <span class="num">08</span>
             <h3>Eider Ai</h3>
             <p>Chat inteligente capaz de gestionar como asistente de cualquier negocio.</p>
-            <span class="ssoon" style="display:inline-flex; align-items:center; gap:.4rem; font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px solid var(--gold-dim); padding:.45rem 1rem; border-radius:40px; margin-top:.6rem; background:#000;">Próximamente</span>
+            <span class="ssoon">Próximamente</span>
           </div>
           <div class="facet-text" data-i="8">
             <span class="num">09</span>
             <h3>Lynx Market</h3>
             <p>Top secret.</p>
-            <span class="ssoon" style="display:inline-flex; align-items:center; gap:.4rem; font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px solid var(--gold-dim); padding:.45rem 1rem; border-radius:40px; margin-top:.6rem; background:#000;">Próximamente</span>
+            <span class="ssoon">Próximamente</span>
           </div>
         </div>
       </div>
@@ -435,31 +490,31 @@
             <div class="ficon" style="background:rgba(232,160,32,0.15); border-color:rgba(232,160,32,0.26);"><i class="fas fa-calendar-check"></i></div>
             <div class="ftitle">Cita Manager</div>
           </div>
-          <div class="facet3d" data-face="2">
+          <div class="facet3d" data-face="2" style="--ac:#34d399;">
             <div class="ficon" style="background:rgba(52,211,153,0.15); border-color:rgba(52,211,153,0.26);"><i class="fas fa-graduation-cap" style="color:#34d399;"></i></div>
             <div class="ftitle">Onix Crypto Manager</div>
           </div>
-          <div class="facet3d" data-face="3">
+          <div class="facet3d" data-face="3" style="--ac:#A0060E;">
             <div class="ficon" style="background:rgba(160,6,14,0.15); border-color:rgba(160,6,14,0.26);"><i class="fas fa-coins" style="color:#A0060E;"></i></div>
             <div class="ftitle">Crypto Alien Click</div>
           </div>
-          <div class="facet3d" data-face="4">
+          <div class="facet3d" data-face="4" style="--ac:#a78bfa;">
             <div class="ficon" style="background:rgba(167,139,250,0.15); border-color:rgba(167,139,250,0.26);"><i class="fas fa-film" style="color:#a78bfa;"></i></div>
             <div class="ftitle">Cinonix</div>
           </div>
-          <div class="facet3d" data-face="5">
+          <div class="facet3d" data-face="5" style="--ac:#f06292;">
             <div class="ficon" style="background:rgba(240,98,146,0.15); border-color:rgba(240,98,146,0.26);"><i class="fas fa-bullhorn" style="color:#f06292;"></i></div>
             <div class="ftitle">Zona VIP Trends</div>
           </div>
-          <div class="facet3d" data-face="6">
+          <div class="facet3d" data-face="6" style="--ac:#448aff;">
             <div class="ficon" style="background:rgba(68,138,255,0.15); border-color:rgba(68,138,255,0.26);"><i class="fas fa-robot" style="color:#448aff;"></i></div>
             <div class="ftitle">LeadGen Ai</div>
           </div>
-          <div class="facet3d" data-face="7">
+          <div class="facet3d" data-face="7" style="--ac:#ff6b6b;">
             <div class="ficon" style="background:rgba(255,107,107,0.15); border-color:rgba(255,107,107,0.26);"><i class="fas fa-comments" style="color:#ff6b6b;"></i></div>
             <div class="ftitle">Eider Ai</div>
           </div>
-          <div class="facet3d" data-face="8">
+          <div class="facet3d" data-face="8" style="--ac:#e0f7ff;">
             <div class="ficon" style="background:rgba(224,247,255,0.15); border-color:rgba(224,247,255,0.26);"><i class="fas fa-lock" style="color:#e0f7ff;"></i></div>
             <div class="ftitle">Lynx Market</div>
           </div>
@@ -480,8 +535,8 @@
     <div class="stage-grid container">
       <div>
         <div class="section-header" style="text-align:left; margin-bottom:2rem;">
-          <div class="eyebrow" style="font-family:var(--ff-mono); font-size:.7rem; letter-spacing:.2em; color:var(--gold); text-transform:uppercase; background:#000; padding:.2rem .7rem; border-radius:6px; display:inline-block;">Proyectos para terceros</div>
-          <h2 style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem; background:#000; padding:.2rem .6rem; border-radius:8px; display:inline; box-decoration-break:clone; -webkit-box-decoration-break:clone;">Plataformas y servicios que he creado para terceros</h2>
+          <div class="eyebrow eyebrow-glass">Proyectos para terceros</div>
+          <h2 class="h2-glass" style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem;">Plataformas y servicios que he creado para terceros</h2>
         </div>
         <div class="panel-text" id="third-panel-text">
           <div class="facet-text active" data-i="0">
@@ -519,23 +574,23 @@
 
       <div class="prism-stage">
         <div class="prism" id="thirdPrism">
-          <div class="facet3d" data-face="0">
+          <div class="facet3d" data-face="0" style="--ac:#00b4d8;">
             <div class="ficon" style="background:rgba(0,180,216,0.15); border-color:rgba(0,180,216,0.26);"><i class="fas fa-cube" style="color:#00b4d8;"></i></div>
             <div class="ftitle">The Cube</div>
           </div>
-          <div class="facet3d" data-face="1">
+          <div class="facet3d" data-face="1" style="--ac:#f06292;">
             <div class="ficon" style="background:rgba(240,98,146,0.15); border-color:rgba(240,98,146,0.26);"><i class="fas fa-feather" style="color:#f06292;"></i></div>
             <div class="ftitle">Destellos de Mariposa</div>
           </div>
-          <div class="facet3d" data-face="2">
+          <div class="facet3d" data-face="2" style="--ac:#34d399;">
             <div class="ficon" style="background:rgba(52,211,153,0.15); border-color:rgba(52,211,153,0.26);"><i class="fas fa-coins" style="color:#34d399;"></i></div>
             <div class="ftitle">LottoSol</div>
           </div>
-          <div class="facet3d" data-face="3">
+          <div class="facet3d" data-face="3" style="--ac:#a78bfa;">
             <div class="ficon" style="background:rgba(167,139,250,0.15); border-color:rgba(167,139,250,0.26);"><i class="fas fa-house" style="color:#a78bfa;"></i></div>
             <div class="ftitle">Drew Nt Services</div>
           </div>
-          <div class="facet3d" data-face="4">
+          <div class="facet3d" data-face="4" style="--ac:#448aff;">
             <div class="ficon" style="background:rgba(68,138,255,0.15); border-color:rgba(68,138,255,0.26);"><i class="fas fa-globe" style="color:#448aff;"></i></div>
             <div class="ftitle">1percent</div>
           </div>
@@ -961,7 +1016,7 @@
       // de soltar el canvas -- si se corta justo en thirdRect.bottom===0, el
       // fundido casi nunca llega a completarse y el fondo original (negro
       // liso de <body>) aparece de golpe en vez de desvanecido.
-      const EXIT_FADE = window.innerHeight * 0.6;
+      const EXIT_FADE = window.innerHeight * 1.1;
       const inExitFade = thirdRect.bottom <= 0 && thirdRect.bottom > -EXIT_FADE;
       const shouldBeBg = inProjectsSection || inThirdSection || inExitFade;
 
