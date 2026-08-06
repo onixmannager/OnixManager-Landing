@@ -1016,7 +1016,7 @@
       // de soltar el canvas -- si se corta justo en thirdRect.bottom===0, el
       // fundido casi nunca llega a completarse y el fondo original (negro
       // liso de <body>) aparece de golpe en vez de desvanecido.
-      const EXIT_FADE = window.innerHeight * 1.1;
+      const EXIT_FADE = window.innerHeight * 0.35;
       const inExitFade = thirdRect.bottom <= 0 && thirdRect.bottom > -EXIT_FADE;
       const shouldBeBg = inProjectsSection || inThirdSection || inExitFade;
 
