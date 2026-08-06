@@ -100,24 +100,35 @@
   .hero-scroll-cue .line{width:1px; height:26px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
   @keyframes cue{0%{opacity:.2;} 50%{opacity:1;} 100%{opacity:.2;}}
 
-  /* Cara 1 del cubo: video a pantalla completa que gira junto con el cubo */
+  /* Canvas del logo 3D. SIEMPRE position:fixed y SIEMPRE en el mismo punto
+     del DOM (ver el comentario junto al <canvas> en el HTML) -- nunca se
+     mueve de padre. Su ubicación visual se decide solo con `transform`:
+     - Estado "dentro del cubo" (clase .in-cube): JS le aplica la MISMA
+       transformación 3D que tendría la cara 1 del cubo (translateZ + rotateX
+       del cubo, más su propia posición de cara), así aparenta girar pegado
+       al resto de caras aunque viva fuera de ellas en el DOM.
+     - Estado "fondo fijo" (clase .as-bg): transform:none, pantalla completa,
+       detrás de todo el contenido (z-index negativo).
+     Solo se anima opacity/transform (vías de compositor), nunca position ni
+     un cambio de padre, que es lo que causaba el tirón en scroll lento. */
   .sobre-video-canvas{
-    position:absolute; inset:0; width:100%; height:100%; z-index:0;
-    display:block; opacity:0; pointer-events:none; transition:opacity .4s ease;
+    position:fixed; top:0; left:0; z-index:-1;
+    width:100%; height:100%;
+    display:block; opacity:0; pointer-events:none;
+    transform-origin:top left;
+    transition:opacity .4s ease;
   }
   .sobre-video-canvas.is-ready{opacity:1;}
 
-  /* Cuando el frame queda fijo, el canvas sale del cubo y actúa como fondo
-     de pantalla completa durante las secciones de Proyectos.
-     z-index negativo: así queda garantizado que se pinta detrás de TODO el
-     contenido normal de la página, sin depender de en qué punto del DOM
-     quede insertado tras el reparenting (evita que tape la sección).
-     Sin transición: la opacidad se controla en JS en cada tick de scroll
-     (curva continua ligada 1:1 al scroll), así no hay lag ni saltos frente
-     al movimiento del usuario. */
+  .sobre-video-canvas.in-cube{
+    z-index:0; /* mientras "está" dentro del cubo, por encima del resto de caras */
+    transition:none; /* la opacidad de esta fase la lleva sobreVideo.setProgress/draw, sin fundido propio */
+  }
+
   .sobre-video-canvas.as-bg{
-    position:fixed; inset:0; width:100%; height:100%; z-index:-1;
-    transition:none;
+    z-index:-1;
+    transform:none;
+    transition:none; /* la opacidad se controla en JS, ligada 1:1 al scroll */
   }
 
   /* Mientras el video actúa de fondo, el canvas fijo se ve por encima; se deja
@@ -330,13 +341,22 @@
         </div>
       </div>
 
-      <div class="hero-face" data-face="1">
-        <canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
-      </div>
+      <div class="hero-face" data-face="1"></div>
 
     </div>
   </div>
 </div>
+
+<!-- El canvas del logo vive SIEMPRE aquí, fuera del cubo 3D, con position:fixed
+     fijo desde el primer render. Nunca se reparenta: mientras debe "parecer"
+     estar dentro del cubo, se le aplica manualmente (en JS) la misma
+     transformación 3D que tendría la cara 1 del cubo; cuando pasa a actuar de
+     fondo de "Mis Proyectos", esa transformación se quita y solo queda el
+     fondo a pantalla completa. Evitar el appendChild a mitad de scroll es la
+     clave para que la transición no dé un tirón en scroll lento: mover un
+     nodo de padre SÍ fuerza un reflow síncrono, cambiar un transform/opacity
+     no. -->
+<canvas class="sobre-video-canvas" id="sobreLogo" aria-hidden="true"></canvas>
 
 <!-- ════ MIS PROYECTOS — prisma 3D con scroll ════ -->
 <div class="driver" id="projDriver" style="height:900vh;">
@@ -707,9 +727,9 @@
 
     function resizeCanvas(){
       // Mientras actúa de fondo fijo, el tamaño se fuerza en px explícitos
-      // (ver el reparenting en updateHeroCube) para que coincida siempre
-      // con el que tenía dentro del cubo; hay que mantenerlo actualizado
-      // también si la ventana cambia de tamaño en ese estado.
+      // (por si el 100% en position:fixed no se recalcula al vuelo en algún
+      // navegador); hay que mantenerlo actualizado también si la ventana
+      // cambia de tamaño en ese estado.
       if(canvas.classList.contains('as-bg')){
         canvas.style.width = document.documentElement.clientWidth + 'px';
         canvas.style.height = window.innerHeight + 'px';
@@ -859,13 +879,9 @@
   const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 80));
   const BG_OVERLAY_ALPHA = 0; // sin velo oscuro sobre el fondo fijo
 
-  // Referencias para poder devolver el canvas a su cara original del cubo 3D.
-  // Es necesario porque .hero-cube/.hero-face aplican `transform` vía JS, y un
-  // descendiente con `position:fixed` se posiciona respecto a ese ancestro
-  // transformado (no respecto al viewport), quedando fuera de pantalla al
-  // hacer scroll. Por eso, mientras actúa de fondo, se saca del cubo.
-  const sobreLogoOriginalParent = sobreLogo ? sobreLogo.parentNode : null;
-  const sobreLogoOriginalNextSibling = sobreLogo ? sobreLogo.nextSibling : null;
+  // Índice de la cara del cubo donde "vive" visualmente el canvas mientras
+  // no es fondo (cara 1, la del video) -- usado para replicar su transform.
+  const SOBRE_FACE_INDEX = 1;
 
   // ── Línea de tiempo única del scroll (fix del salto Hero → Mis Proyectos) ──
   // ANTES: el frame del video se calculaba con DOS fórmulas independientes:
@@ -939,12 +955,34 @@
       const inThirdSection = thirdRect.bottom > 0 && thirdRect.top < window.innerHeight;
       const shouldBeBg = inProjectsSection || inThirdSection;
 
+      // El canvas NUNCA cambia de padre en el DOM (ver comentario junto a su
+      // <canvas> en el HTML): solo se alternan clases. ".in-cube" aplica una
+      // transformación 3D calculada para que aparente estar pegado a la
+      // cara 1 del cubo; ".as-bg" la quita y lo deja de fondo a pantalla
+      // completa. Alternar clases (transform/opacity) no fuerza reflow, a
+      // diferencia de moverlo de padre -- por eso ya no hay tirón en scroll
+      // lento.
       if(shouldBeBg && !videoAsBg){
         videoAsBg = true;
-        document.body.appendChild(sobreLogo); // sacarlo del cubo 3D transformado
+        sobreLogo.classList.remove('in-cube');
         sobreLogo.classList.add('as-bg');
         document.body.classList.add('video-bg-active');
         sobreVideo.resizeCanvas();
+      }
+
+      if(!shouldBeBg && !videoAsBg){
+        // Fase "dentro del cubo": replica exactamente el transform que
+        // tendría la cara 1 dentro de .hero-cube (misma fórmula que
+        // .hero-face vía JS: rotateX(-i*ANGLE) translateZ(depth)),
+        // compuesto con el transform actual del propio cubo. Al no estar
+        // realmente anidado dentro de .hero-cube, también necesita su
+        // propia perspective para que la proyección 3D coincida.
+        const depth = heroCube.dataset.depth;
+        sobreLogo.classList.add('in-cube');
+        sobreLogo.style.perspective = '2200px';
+        sobreLogo.style.transform =
+          `translateZ(-${depth}px) rotateX(${rotation}deg) ` +
+          `rotateX(${-SOBRE_FACE_INDEX * HERO_ANGLE}deg) translateZ(${depth}px)`;
       }
 
       if(shouldBeBg && videoAsBg){
@@ -998,10 +1036,9 @@
         sobreLogo.style.width = '';
         sobreLogo.style.height = '';
         document.body.classList.remove('video-bg-active');
-        // devolverlo a su cara original dentro del cubo 3D
-        if(sobreLogoOriginalParent){
-          sobreLogoOriginalParent.insertBefore(sobreLogo, sobreLogoOriginalNextSibling);
-        }
+        // No hay reparenting que revertir: solo se retoma la fase
+        // "dentro del cubo" (transform calculado) en el siguiente tick,
+        // ya que shouldBeBg ahora es false.
         sobreVideo.resizeCanvas();
       }
     }
