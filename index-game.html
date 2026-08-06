@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ONIX // SYSTEM — Onix Manager</title>
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Onix Manager - Soluciones Digitales">
+<meta name="twitter:description" content="Educación financiera, tecnología blockchain y desarrollo de proyectos digitales.">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/onixmannager/Landingpage/refs/heads/main/logoonixmanager.ico">
+<meta name="twitter:site" content="@OMannager">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/onixmannager/Landingpage/refs/heads/main/logoonixmanager.ico">
+<link rel="shortcut icon" href="https://raw.githubusercontent.com/onixmannager/Landingpage/refs/heads/main/logoonixmanager.ico">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   ONIX // SYSTEM — game engine styles
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --void:#020204; --void2:#050609; --panel:#0a0d14; --panel2:#0f1420;
+  --gold:#f2b13a; --gold-hi:#ffd873; --gold-dim:rgba(242,177,58,0.14);
+  --cyan:#3ee6e0; --cyan-dim:rgba(62,230,224,0.14);
+  --magenta:#ff3ea5;
+  --ink:#eef1f8; --ink2:#9aa3ba; --ink3:#5c6478;
+  --line:rgba(242,177,58,0.16); --line-soft:rgba(255,255,255,0.06);
+  --ff-display:'Orbitron', sans-serif;
+  --ff-body:'Rajdhani', sans-serif;
+  --ff-mono:'JetBrains Mono', monospace;
+  --hud-h: 64px;
+}
+*{margin:0; padding:0; box-sizing:border-box;}
+html{scroll-behavior:auto;}
+body{
+  background:var(--void); color:var(--ink2); font-family:var(--ff-body);
+  line-height:1.5; overflow-x:hidden; cursor:default;
+  -webkit-font-smoothing:antialiased;
+}
+a{text-decoration:none; color:inherit;}
+img{max-width:100%; display:block;}
+button{font-family:inherit; cursor:pointer;}
+:focus-visible{outline:2px solid var(--gold); outline-offset:3px;}
+::selection{background:var(--gold); color:#000;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-track{background:var(--void);}
+::-webkit-scrollbar-thumb{background:var(--gold-dim); border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+
+.container{max-width:1180px; margin:0 auto; padding:0 1.5rem; position:relative; z-index:2;}
+
+/* ══════════════ BOOT SCREEN ══════════════ */
+#boot{
+  position:fixed; inset:0; z-index:9999; background:var(--void);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:opacity .8s ease, visibility .8s ease;
+}
+#boot.hide{opacity:0; visibility:hidden; pointer-events:none;}
+.boot-mark{width:120px; height:120px; position:relative; margin-bottom:2rem;}
+.boot-ring{position:absolute; inset:0; border-radius:50%; border:2px solid transparent; border-top-color:var(--gold); animation:bootspin 1.1s linear infinite;}
+.boot-ring.r2{inset:14px; border-top-color:var(--cyan); animation-duration:.8s; animation-direction:reverse;}
+.boot-ring.r3{inset:28px; border-top-color:var(--ink2); opacity:.5; animation-duration:1.6s;}
+@keyframes bootspin{to{transform:rotate(360deg);}}
+.boot-label{font-family:var(--ff-mono); font-size:.75rem; letter-spacing:.35em; color:var(--gold); text-transform:uppercase; margin-bottom:.6rem;}
+.boot-bar-track{width:240px; height:3px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;}
+.boot-bar{width:0%; height:100%; background:linear-gradient(90deg,var(--gold),var(--cyan)); transition:width .3s ease; box-shadow:0 0 12px var(--gold);}
+.boot-pct{font-family:var(--ff-mono); font-size:.68rem; color:var(--ink3); margin-top:.7rem; letter-spacing:.1em;}
+
+/* ══════════════ WORLD BACKGROUND (canvas starfield + parallax grid) ══════════════ */
+#worldCanvas{position:fixed; inset:0; z-index:0; pointer-events:none;}
+.world-vignette{position:fixed; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse 80% 60% at 50% 40%, transparent 40%, rgba(0,0,0,0.55) 100%);}
+.world-scanlines{position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.035; background:repeating-linear-gradient(0deg, #fff 0px, transparent 1px, transparent 2px);}
+.world-grid-floor{position:fixed; left:0; right:0; bottom:0; height:46vh; z-index:1; pointer-events:none; opacity:.35;
+  background-image:linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:52px 52px; transform:perspective(420px) rotateX(72deg); transform-origin:bottom; mask-image:linear-gradient(to top, black, transparent);}
+
+/* ══════════════ HUD — persistent top bar ══════════════ */
+#hud{
+  position:fixed; top:0; left:0; right:0; z-index:500; height:var(--hud-h);
+  display:flex; align-items:center; gap:1.2rem; padding:0 1.2rem;
+  background:linear-gradient(180deg, rgba(5,6,9,0.92), rgba(5,6,9,0.75));
+  backdrop-filter:blur(14px); border-bottom:1px solid var(--line-soft);
+  transform:translateY(-100%); transition:transform .6s cubic-bezier(.2,.8,.2,1);
+}
+#hud.in{transform:translateY(0);}
+.hud-id{display:flex; align-items:center; gap:.6rem; flex-shrink:0;}
+.hud-badge{width:34px; height:34px; border-radius:8px; background:var(--gold-dim); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-family:var(--ff-display); font-weight:900; color:var(--gold); font-size:.85rem; flex-shrink:0;}
+.hud-name{font-family:var(--ff-display); font-weight:700; font-size:.78rem; color:var(--ink); letter-spacing:.04em; white-space:nowrap;}
+.hud-name small{display:block; font-family:var(--ff-mono); font-weight:400; font-size:.6rem; color:var(--ink3); letter-spacing:.15em; margin-top:1px;}
+
+.hud-xp{flex:1; display:flex; align-items:center; gap:.7rem; min-width:0;}
+.hud-xp-label{font-family:var(--ff-mono); font-size:.62rem; color:var(--ink3); letter-spacing:.12em; white-space:nowrap; flex-shrink:0;}
+.hud-xp-track{flex:1; height:6px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; position:relative; max-width:280px;}
+.hud-xp-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--cyan),var(--gold)); border-radius:4px; transition:width .6s cubic-bezier(.2,.8,.2,1); box-shadow:0 0 10px var(--gold);}
+.hud-xp-pct{font-family:var(--ff-mono); font-size:.65rem; color:var(--gold); flex-shrink:0; min-width:32px;}
+
+.hud-nodes{display:flex; align-items:center; gap:7px; flex-shrink:0;}
+.hud-node{width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.15); transition:all .35s ease; position:relative; cursor:pointer;}
+.hud-node.done{background:var(--gold); border-color:var(--gold); box-shadow:0 0 8px var(--gold);}
+.hud-node.here{background:var(--cyan); border-color:var(--cyan); box-shadow:0 0 10px var(--cyan); transform:scale(1.35);}
+.hud-node::after{content:attr(data-label); position:absolute; top:140%; left:50%; transform:translateX(-50%); font-family:var(--ff-mono); font-size:.6rem; color:var(--ink2); white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .2s ease; background:var(--panel); padding:.2rem .5rem; border-radius:4px; border:1px solid var(--line-soft);}
+.hud-node:hover::after{opacity:1;}
+
+.hud-actions{display:flex; align-items:center; gap:.5rem; flex-shrink:0;}
+.hud-btn{width:34px; height:34px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; color:var(--ink2); font-size:.85rem; transition:all .25s ease;}
+.hud-btn:hover{background:var(--gold-dim); border-color:var(--gold); color:var(--gold);}
+.hud-btn.active{background:var(--gold-dim); border-color:var(--gold); color:var(--gold);}
+
+@media (max-width:860px){
+  .hud-name, .hud-xp-label{display:none;}
+  .hud-nodes{display:none;}
+  #hud{gap:.7rem; padding:0 .8rem;}
+}
+
+/* ══════════════ TOAST — achievement popups ══════════════ */
+#toastLayer{position:fixed; top:calc(var(--hud-h) + 14px); right:16px; z-index:600; display:flex; flex-direction:column; gap:8px; pointer-events:none; align-items:flex-end;}
+.toast{
+  display:flex; align-items:center; gap:.7rem; background:var(--panel); border:1px solid var(--gold);
+  border-radius:10px; padding:.65rem 1rem .65rem .7rem; max-width:300px; box-shadow:0 10px 40px -10px rgba(0,0,0,0.8), 0 0 20px -6px var(--gold);
+  transform:translateX(120%); opacity:0; transition:transform .5s cubic-bezier(.2,.8,.2,1), opacity .5s ease;
+}
+.toast.in{transform:translateX(0); opacity:1;}
+.toast-icn{width:30px; height:30px; border-radius:7px; background:var(--gold-dim); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; color:var(--gold); flex-shrink:0; font-size:.85rem;}
+.toast-txt{min-width:0;}
+.toast-txt .tt1{font-family:var(--ff-mono); font-size:.6rem; letter-spacing:.14em; color:var(--gold); text-transform:uppercase;}
+.toast-txt .tt2{font-family:var(--ff-body); font-weight:600; font-size:.82rem; color:var(--ink); margin-top:1px;}
+@media (max-width:640px){#toastLayer{left:16px; right:16px; align-items:stretch;} .toast{max-width:none;}}
+
+/* ══════════════ CURSOR AIM (custom crosshair, desktop only) ══════════════ */
+#aim{position:fixed; width:26px; height:26px; z-index:9000; pointer-events:none; transform:translate(-50%,-50%); mix-blend-mode:difference; display:none;}
+#aim svg{width:100%; height:100%;}
+@media (hover:hover) and (pointer:fine){#aim{display:block;}}
+
+/* ══════════════ HERO — character select screen ══════════════ */
+.hero{
+  min-height:100vh; display:flex; align-items:center; padding:calc(var(--hud-h) + 2rem) 0 4rem;
+  position:relative;
+}
+.hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:3rem; align-items:center; width:100%;}
+@media (max-width:900px){ .hero-grid{grid-template-columns:1fr; gap:2.5rem; text-align:center;} }
+
+.hero-eyebrow{
+  display:inline-flex; align-items:center; gap:.5rem; font-family:var(--ff-mono); font-size:.68rem;
+  letter-spacing:.28em; color:var(--cyan); text-transform:uppercase; background:var(--cyan-dim);
+  border:1px solid rgba(62,230,224,0.35); padding:.35rem .9rem; border-radius:30px; margin-bottom:1.3rem;
+  opacity:0; transform:translateY(10px);
+}
+.hero-eyebrow .dot{width:6px; height:6px; border-radius:50%; background:var(--cyan); animation:pulse2 1.6s ease-in-out infinite;}
+@keyframes pulse2{0%,100%{opacity:1; box-shadow:0 0 0 0 rgba(62,230,224,0.5);} 50%{opacity:.5;}}
+
+.hero h1{
+  font-family:var(--ff-display); font-weight:900; font-size:clamp(2.1rem,5vw,3.6rem); line-height:1.08;
+  color:var(--ink); letter-spacing:-.01em; opacity:0; transform:translateY(16px);
+}
+.hero h1 .accent{color:var(--gold); position:relative; display:inline-block;}
+.hero h1 .sub{display:block; font-size:.42em; font-family:var(--ff-mono); font-weight:500; color:var(--ink3); letter-spacing:.08em; margin-top:.6em;}
+
+.hero-desc{font-size:1.05rem; color:var(--ink2); margin:1.4rem 0 2rem; max-width:520px; opacity:0; transform:translateY(16px);}
+@media (max-width:900px){ .hero-desc{margin-left:auto; margin-right:auto;} }
+.hero-desc strong{color:var(--ink); font-weight:600;}
+
+.hero-cta-row{display:flex; gap:.9rem; flex-wrap:wrap; opacity:0; transform:translateY(16px);}
+@media (max-width:900px){ .hero-cta-row{justify-content:center;} }
+.btn-primary{
+  position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:.6rem;
+  background:linear-gradient(135deg,var(--gold),var(--gold-hi)); color:#0a0700; font-weight:700;
+  font-family:var(--ff-display); font-size:.82rem; letter-spacing:.03em; padding:.9rem 1.7rem; border-radius:10px;
+  box-shadow:0 8px 26px -8px rgba(242,177,58,0.55); transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+}
+.btn-primary:hover{transform:translateY(-3px); box-shadow:0 14px 32px -8px rgba(242,177,58,0.7);}
+.btn-primary:active{transform:translateY(-1px) scale(.98);}
+.btn-ghost{
+  display:inline-flex; align-items:center; gap:.6rem; background:rgba(255,255,255,0.04); color:var(--ink);
+  font-family:var(--ff-display); font-size:.82rem; font-weight:700; letter-spacing:.03em; padding:.9rem 1.7rem;
+  border-radius:10px; border:1px solid var(--line-soft); transition:all .25s ease;
+}
+.btn-ghost:hover{border-color:var(--cyan); color:var(--cyan); background:var(--cyan-dim);}
+
+/* stat bars — "character sheet" */
+.hero-stats{display:flex; gap:1.6rem; margin-top:2.4rem; flex-wrap:wrap; opacity:0; transform:translateY(16px);}
+@media (max-width:900px){ .hero-stats{justify-content:center;} }
+.hstat{min-width:120px;}
+.hstat-top{display:flex; justify-content:space-between; font-family:var(--ff-mono); font-size:.62rem; letter-spacing:.08em; color:var(--ink3); margin-bottom:.35rem; text-transform:uppercase;}
+.hstat-top span:last-child{color:var(--gold);}
+.hstat-track{width:130px; height:5px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden;}
+.hstat-fill{height:100%; border-radius:3px; width:0%; transition:width 1.4s cubic-bezier(.2,.8,.2,1);}
+
+/* Holographic core — logo showcase, replaces static avatar */
+.hero-core-wrap{position:relative; display:flex; align-items:center; justify-content:center; opacity:0; transform:scale(.85);}
+.hero-core{position:relative; width:min(380px, 78vw); aspect-ratio:1; display:flex; align-items:center; justify-content:center;}
+.core-ring{position:absolute; border-radius:50%; border:1px solid rgba(242,177,58,0.25);}
+.core-ring.cr1{inset:0;}
+.core-ring.cr2{inset:34px; border-color:rgba(62,230,224,0.18); border-style:dashed;}
+.core-ring.cr3{inset:64px; border-color:rgba(242,177,58,0.15);}
+.core-orbit-dot{position:absolute; width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 10px var(--gold); top:-4px; left:50%;}
+.core-orbit{position:absolute; inset:0; animation:orbitspin 14s linear infinite;}
+.core-orbit.o2{inset:34px; animation-duration:9s; animation-direction:reverse;}
+.core-orbit.o2 .core-orbit-dot{background:var(--cyan); box-shadow:0 0 10px var(--cyan); width:6px; height:6px;}
+@keyframes orbitspin{to{transform:rotate(360deg);}}
+.core-canvas-wrap{position:relative; width:72%; height:72%; border-radius:50%; overflow:hidden; box-shadow:0 0 60px -8px rgba(242,177,58,0.35), inset 0 0 40px rgba(0,0,0,0.5); perspective:800px; cursor:grab;}
+.core-canvas-wrap:active{cursor:grabbing;}
+.core-canvas-wrap img{width:100%; height:100%; object-fit:cover; display:block; will-change:transform; transform-style:preserve-3d;}
+.core-scan{position:absolute; inset:0; background:linear-gradient(180deg, transparent 46%, rgba(62,230,224,0.25) 50%, transparent 54%); animation:corescan 2.6s ease-in-out infinite; pointer-events:none;}
+@keyframes corescan{0%,100%{transform:translateY(-100%);} 50%{transform:translateY(100%);}}
+.core-hint{position:absolute; bottom:-2.2rem; left:50%; transform:translateX(-50%); font-family:var(--ff-mono); font-size:.62rem; letter-spacing:.14em; color:var(--ink3); text-transform:uppercase; white-space:nowrap; display:flex; align-items:center; gap:.4rem;}
+@media (max-width:900px){ .core-hint{display:none;} }
+
+.hero-scroll-cue{position:absolute; bottom:1.6rem; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; font-family:var(--ff-mono); font-size:.65rem; color:var(--ink3); letter-spacing:.2em; opacity:0;}
+.hero-scroll-cue .line{width:1px; height:28px; background:linear-gradient(var(--gold), transparent); animation:cue 1.8s ease-in-out infinite;}
+@keyframes cue{0%{opacity:.2;} 50%{opacity:1;} 100%{opacity:.2;}}
+
+@media (prefers-reduced-motion: reduce){
+  .core-orbit, .core-scan, .hero-scroll-cue .line{animation:none;}
+}
+
+/* ══════════════ SECTION HEADER (shared) ══════════════ */
+.sec-head{margin-bottom:3rem; max-width:640px;}
+.sec-head .eyebrow{display:inline-flex; align-items:center; gap:.5rem; font-family:var(--ff-mono); font-size:.68rem; letter-spacing:.26em; color:var(--gold); text-transform:uppercase; margin-bottom:.8rem;}
+.sec-head .eyebrow::before{content:''; width:22px; height:1px; background:var(--gold);}
+.sec-head h2{font-family:var(--ff-display); font-weight:800; font-size:clamp(1.7rem,3.6vw,2.5rem); color:var(--ink); line-height:1.18;}
+.sec-head p{color:var(--ink2); margin-top:.9rem; font-size:1rem; max-width:560px;}
+.reveal-up{opacity:0; transform:translateY(20px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1);}
+.reveal-up.in{opacity:1; transform:translateY(0);}
+.section{padding:6rem 0; position:relative;}
+.section-divider{height:1px; background:linear-gradient(90deg, transparent, var(--line-soft) 20%, var(--line-soft) 80%, transparent);}
+
+/* ══════════════ MISSION MAP — node-based project explorer ══════════════ */
+.map-wrap{position:relative;}
+.map-svg-layer{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;}
+.map-svg-layer path{fill:none; stroke:var(--line); stroke-width:1.5; stroke-dasharray:4 6;}
+.map-svg-layer path.lit{stroke:var(--gold); stroke-dasharray:none; filter:drop-shadow(0 0 3px var(--gold));}
+
+.node-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; position:relative; z-index:2;}
+@media (max-width:900px){ .node-grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:560px){ .node-grid{grid-template-columns:1fr;} }
+
+.node{
+  position:relative; background:var(--panel); border:1px solid var(--line-soft); border-radius:16px;
+  padding:1.5rem 1.4rem 1.4rem; overflow:hidden; transition:transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s ease, box-shadow .35s ease;
+  opacity:0; transform:translateY(24px) scale(.96);
+}
+.node.in{opacity:1; transform:translateY(0) scale(1);}
+.node::before{
+  content:''; position:absolute; inset:0; opacity:0; transition:opacity .4s ease; pointer-events:none;
+  background:radial-gradient(circle at 30% 0%, var(--node-glow, rgba(242,177,58,0.16)), transparent 60%);
+}
+.node:hover{transform:translateY(-6px); border-color:var(--node-color, var(--gold)); box-shadow:0 20px 50px -18px rgba(0,0,0,0.7), 0 0 0 1px var(--node-color, var(--gold)) inset;}
+.node:hover::before{opacity:1;}
+.node.locked{opacity:.55; filter:grayscale(.4);}
+.node.locked:hover{transform:none; box-shadow:none;}
+
+.node-top{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem;}
+.node-icn{width:46px; height:46px; border-radius:12px; background:var(--node-dim, var(--gold-dim)); border:1px solid var(--node-color, var(--gold)); display:flex; align-items:center; justify-content:center; font-size:1.25rem; color:var(--node-color, var(--gold)); flex-shrink:0;}
+.node-tag{font-family:var(--ff-mono); font-size:.62rem; letter-spacing:.1em; color:var(--ink3); background:rgba(255,255,255,0.04); padding:.25rem .6rem; border-radius:20px; border:1px solid var(--line-soft); white-space:nowrap;}
+.node-tag.live{color:var(--gold); border-color:rgba(242,177,58,0.35);}
+.node-tag.soon{color:var(--ink3);}
+.node-tag.soon::before{content:''; width:5px; height:5px; border-radius:50%; background:var(--ink3); display:inline-block; margin-right:.35rem; animation:blink 1.5s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;} 50%{opacity:.2;}}
+
+.node h3{font-family:var(--ff-display); font-weight:700; font-size:1.05rem; color:var(--ink); margin-bottom:.5rem;}
+.node p{font-size:.88rem; color:var(--ink2); margin-bottom:1.1rem; min-height:2.6em;}
+.node-cta{display:inline-flex; align-items:center; gap:.5rem; font-family:var(--ff-mono); font-size:.72rem; font-weight:600; color:var(--node-color, var(--gold)); letter-spacing:.04em;}
+.node-cta i{transition:transform .25s ease;}
+.node:hover .node-cta i{transform:translateX(4px);}
+.node-lock-icn{font-size:.72rem; color:var(--ink3); display:flex; align-items:center; gap:.4rem; font-family:var(--ff-mono);}
+
+.node-id{position:absolute; top:1.5rem; right:1.4rem; font-family:var(--ff-mono); font-size:.62rem; color:var(--ink3); letter-spacing:.08em;}
+
+/* ══════════════ MISSION MODAL (project detail overlay) ══════════════ */
+#missionModal{
+  position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center; padding:1.4rem;
+  opacity:0; pointer-events:none; transition:opacity .35s ease;
+}
+#missionModal.open{opacity:1; pointer-events:auto;}
+.mm-backdrop{position:absolute; inset:0; background:rgba(2,2,4,0.86); backdrop-filter:blur(6px);}
+.mm-card{
+  position:relative; width:min(520px,100%); background:var(--panel); border:1px solid var(--mm-color, var(--gold));
+  border-radius:20px; padding:2.2rem; box-shadow:0 30px 90px -20px rgba(0,0,0,0.9), 0 0 60px -18px var(--mm-color, var(--gold));
+  transform:scale(.9) translateY(16px); transition:transform .4s cubic-bezier(.2,.8,.2,1);
+}
+#missionModal.open .mm-card{transform:scale(1) translateY(0);}
+.mm-close{position:absolute; top:1.2rem; right:1.2rem; width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--line-soft); display:flex; align-items:center; justify-content:center; color:var(--ink2); transition:all .2s ease;}
+.mm-close:hover{background:var(--gold-dim); border-color:var(--gold); color:var(--gold);}
+.mm-icn{width:60px; height:60px; border-radius:14px; background:var(--mm-dim, var(--gold-dim)); border:1px solid var(--mm-color, var(--gold)); display:flex; align-items:center; justify-content:center; font-size:1.6rem; color:var(--mm-color, var(--gold)); margin-bottom:1.2rem;}
+.mm-eyebrow{font-family:var(--ff-mono); font-size:.65rem; letter-spacing:.18em; color:var(--mm-color, var(--gold)); text-transform:uppercase; margin-bottom:.5rem;}
+.mm-card h3{font-family:var(--ff-display); font-weight:800; font-size:1.5rem; color:var(--ink); margin-bottom:.9rem;}
+.mm-card p{color:var(--ink2); font-size:.98rem; margin-bottom:1.6rem;}
+.mm-actions{display:flex; gap:.8rem; flex-wrap:wrap;}
+.mm-go{display:inline-flex; align-items:center; gap:.6rem; background:var(--mm-color, var(--gold)); color:#0a0700; font-family:var(--ff-display); font-weight:700; font-size:.8rem; padding:.85rem 1.5rem; border-radius:10px; transition:transform .2s ease;}
+.mm-go:hover{transform:translateY(-2px);}
+.mm-soon-badge{display:inline-flex; align-items:center; gap:.5rem; font-family:var(--ff-mono); font-size:.72rem; color:var(--ink3); border:1px solid var(--line-soft); padding:.7rem 1.2rem; border-radius:10px;}
+
+@media (max-width:480px){
+  .mm-card{padding:1.6rem;}
+}
+
+/* ══════════════ COMMS ARRAY — social links as signal channels ══════════════ */
+.comms-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:1rem;}
+@media (max-width:760px){ .comms-grid{grid-template-columns:repeat(2,1fr);} }
+.comm-node{
+  position:relative; display:flex; flex-direction:column; align-items:center; gap:.7rem;
+  background:var(--panel); border:1px solid var(--line-soft); border-radius:16px; padding:1.6rem 1rem;
+  transition:transform .3s cubic-bezier(.2,.8,.2,1), border-color .3s ease, box-shadow .3s ease;
+  opacity:0; transform:translateY(20px);
+}
+.comm-node.in{opacity:1; transform:translateY(0);}
+.comm-node:hover{transform:translateY(-6px); box-shadow:0 16px 40px -14px rgba(0,0,0,0.6);}
+.comm-icn{width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.3rem; background:rgba(255,255,255,0.05); border:1px solid var(--line-soft); color:var(--ink2); transition:all .3s ease;}
+.comm-node span{font-family:var(--ff-mono); font-size:.72rem; letter-spacing:.05em; color:var(--ink2); transition:color .3s ease;}
+.comm-node.telegram:hover{border-color:#0088cc;} .comm-node.telegram:hover .comm-icn{background:#0088cc; border-color:#0088cc; color:#fff;} .comm-node.telegram:hover span{color:#fff;}
+.comm-node.twitter:hover{border-color:#1DA1F2;} .comm-node.twitter:hover .comm-icn{background:#1DA1F2; border-color:#1DA1F2; color:#fff;} .comm-node.twitter:hover span{color:#fff;}
+.comm-node.youtube:hover{border-color:#FF0000;} .comm-node.youtube:hover .comm-icn{background:#FF0000; border-color:#FF0000; color:#fff;} .comm-node.youtube:hover span{color:#fff;}
+.comm-node.instagram:hover{border-color:#d62976;} .comm-node.instagram:hover .comm-icn{background:linear-gradient(45deg,#f09433,#d62976,#962fbf); border-color:transparent; color:#fff;} .comm-node.instagram:hover span{color:#fff;}
+.comm-node.facebook:hover{border-color:#1877F2;} .comm-node.facebook:hover .comm-icn{background:#1877F2; border-color:#1877F2; color:#fff;} .comm-node.facebook:hover span{color:#fff;}
+
+/* ══════════════ TRANSMIT — contact form as terminal ══════════════ */
+.term-wrap{max-width:620px; margin:0 auto; position:relative;}
+.term{
+  position:relative; background:var(--panel); border:1px solid var(--line-soft); border-radius:18px; overflow:hidden;
+  box-shadow:0 30px 70px -24px rgba(0,0,0,0.7);
+}
+.term-bar{display:flex; align-items:center; gap:.5rem; padding:.8rem 1.1rem; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--line-soft);}
+.term-dot{width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,0.15);}
+.term-bar-label{margin-left:auto; font-family:var(--ff-mono); font-size:.65rem; color:var(--ink3); letter-spacing:.1em;}
+.term-body{padding:1.8rem;}
+.term-line{font-family:var(--ff-mono); font-size:.8rem; color:var(--gold); margin-bottom:1.3rem; display:flex; align-items:center; gap:.5rem;}
+.term-line::before{content:'>'; color:var(--cyan);}
+.term-cursor{display:inline-block; width:7px; height:14px; background:var(--gold); animation:blinkcur 1s step-end infinite;}
+@keyframes blinkcur{0%,100%{opacity:1;} 50%{opacity:0;}}
+
+.field{margin-bottom:1.1rem;}
+.field label{display:block; font-family:var(--ff-mono); font-size:.66rem; letter-spacing:.1em; color:var(--ink3); text-transform:uppercase; margin-bottom:.4rem;}
+.field input, .field textarea{
+  width:100%; padding:.75rem .9rem; background:var(--void2); border:1px solid var(--line-soft); border-radius:9px;
+  color:var(--ink); font-family:var(--ff-body); font-size:.92rem; transition:border-color .25s ease, box-shadow .25s ease;
+}
+.field input:focus, .field textarea:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim);}
+.field textarea{resize:vertical; min-height:100px;}
+
+.btn-transmit{
+  position:relative; overflow:hidden; width:100%; background:linear-gradient(135deg,var(--gold),var(--gold-hi));
+  color:#0a0700; border:none; padding:.9rem; border-radius:10px; font-family:var(--ff-display); font-weight:800;
+  font-size:.85rem; letter-spacing:.03em; display:flex; align-items:center; justify-content:center; gap:.6rem;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.btn-transmit:hover{transform:translateY(-2px); box-shadow:0 10px 26px -8px rgba(242,177,58,0.55);}
+.btn-transmit:active{transform:translateY(0) scale(.98);}
+.term-note{display:flex; align-items:center; gap:.6rem; margin-top:1.1rem; font-size:.82rem; color:var(--ink3); background:rgba(255,255,255,0.03); padding:.7rem 1rem; border-radius:10px; border-left:2px solid var(--gold);}
+.term-success{display:none; text-align:center; padding:2.4rem 1.5rem;}
+.term-success i{font-size:2.4rem; color:var(--gold); margin-bottom:.8rem;}
+.term-success h3{font-family:var(--ff-display); font-size:1.25rem; color:var(--ink); margin-bottom:.4rem;}
+
+/* ══════════════ FOOTER + WHATSAPP FLOAT ══════════════ */
+.footer{border-top:1px solid var(--line-soft); padding:2.4rem 0; text-align:center;}
+.footer p{font-family:var(--ff-mono); font-size:.72rem; color:var(--ink3); letter-spacing:.04em;}
+
+.wa-float{
+  position:fixed; bottom:1.8rem; right:1.8rem; width:60px; height:60px; border-radius:50%;
+  background:var(--panel); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center;
+  color:var(--gold); font-size:1.7rem; z-index:900; box-shadow:0 8px 24px -6px rgba(242,177,58,0.4);
+  transition:all .3s cubic-bezier(.2,.8,.2,1);
+}
+.wa-float:hover{background:var(--gold); color:#0a0700; transform:scale(1.1) rotate(8deg); box-shadow:0 12px 32px -6px rgba(242,177,58,0.6);}
+.wa-float::before{content:''; position:absolute; inset:-6px; border-radius:50%; border:1px solid var(--gold); opacity:.4; animation:wapulse 2.4s ease-out infinite;}
+@keyframes wapulse{0%{transform:scale(1); opacity:.5;} 100%{transform:scale(1.5); opacity:0;}}
+@media (max-width:768px){ .wa-float{bottom:1.3rem; right:1.3rem; width:52px; height:52px; font-size:1.5rem;} }
+
+/* ══════════════ MAP TOGGLE — mini quick-nav panel ══════════════ */
+#mapPanel{
+  position:fixed; top:calc(var(--hud-h) + 10px); right:16px; z-index:550; width:220px;
+  background:var(--panel); border:1px solid var(--line-soft); border-radius:14px; padding:1rem;
+  opacity:0; transform:translateY(-10px) scale(.96); pointer-events:none; transition:all .3s cubic-bezier(.2,.8,.2,1);
+  box-shadow:0 20px 50px -14px rgba(0,0,0,0.8);
+}
+#mapPanel.open{opacity:1; transform:translateY(0) scale(1); pointer-events:auto;}
+.map-panel-title{font-family:var(--ff-mono); font-size:.62rem; letter-spacing:.14em; color:var(--gold); text-transform:uppercase; margin-bottom:.7rem;}
+.map-panel-item{display:flex; align-items:center; gap:.6rem; padding:.55rem .5rem; border-radius:8px; font-size:.82rem; color:var(--ink2); transition:all .2s ease; cursor:pointer;}
+.map-panel-item:hover{background:var(--gold-dim); color:var(--gold);}
+.map-panel-item .dotm{width:6px; height:6px; border-radius:50%; background:var(--ink3); flex-shrink:0;}
+.map-panel-item:hover .dotm{background:var(--gold);}
+</style>
+</head>
+<body>
+
+<canvas id="worldCanvas"></canvas>
+<div class="world-vignette"></div>
+<div class="world-scanlines"></div>
+<div class="world-grid-floor"></div>
+
+<!-- ═══ BOOT ═══ -->
+<div id="boot">
+  <div class="boot-mark"><div class="boot-ring"></div><div class="boot-ring r2"></div><div class="boot-ring r3"></div></div>
+  <div class="boot-label">Onix // System</div>
+  <div class="boot-bar-track"><div class="boot-bar" id="bootBar"></div></div>
+  <div class="boot-pct" id="bootPct">INICIALIZANDO · 0%</div>
+</div>
+
+<!-- ═══ AIM CURSOR ═══ -->
+<div id="aim">
+  <svg viewBox="0 0 26 26"><circle cx="13" cy="13" r="9" fill="none" stroke="#fff" stroke-width="1.2" opacity=".8"/><line x1="13" y1="0" x2="13" y2="6" stroke="#fff" stroke-width="1.2"/><line x1="13" y1="20" x2="13" y2="26" stroke="#fff" stroke-width="1.2"/><line x1="0" y1="13" x2="6" y2="13" stroke="#fff" stroke-width="1.2"/><line x1="20" y1="13" x2="26" y2="13" stroke="#fff" stroke-width="1.2"/><circle cx="13" cy="13" r="1.4" fill="#fff"/></svg>
+</div>
+
+<!-- ═══ HUD ═══ -->
+<div id="hud">
+  <div class="hud-id">
+    <div class="hud-badge">OM</div>
+    <div class="hud-name">JUGADOR: ONIX<small>NIVEL FUNDADOR</small></div>
+  </div>
+  <div class="hud-xp">
+    <span class="hud-xp-label">EXPLORACIÓN</span>
+    <div class="hud-xp-track"><div class="hud-xp-fill" id="hudXpFill"></div></div>
+    <span class="hud-xp-pct" id="hudXpPct">0%</span>
+  </div>
+  <div class="hud-nodes" id="hudNodes"></div>
+  <div class="hud-actions">
+    <button class="hud-btn" id="soundToggle" aria-label="Sonido" title="Sonido"><i class="fas fa-volume-up"></i></button>
+    <button class="hud-btn" id="mapToggle" aria-label="Mapa" title="Mapa de misiones"><i class="fas fa-diagram-project"></i></button>
+  </div>
+</div>
+
+<div id="toastLayer"></div>
+
+<!-- ═══ MISSION MODAL (shared) ═══ -->
+<div id="missionModal" aria-hidden="true">
+  <div class="mm-backdrop" data-mm-close></div>
+  <div class="mm-card" id="mmCard">
+    <button class="mm-close" data-mm-close aria-label="Cerrar"><i class="fas fa-times"></i></button>
+    <div class="mm-icn" id="mmIcn"><i class="fas fa-globe"></i></div>
+    <div class="mm-eyebrow" id="mmEyebrow">MISIÓN N·01</div>
+    <h3 id="mmTitle">Título</h3>
+    <p id="mmDesc">Descripción.</p>
+    <div class="mm-actions" id="mmActions"></div>
+  </div>
+</div>
+
+<div class="container">
+<!-- ═══ HERO — character select ═══ -->
+<section class="hero" id="sec-hero" data-section="inicio" data-hud-label="INICIO">
+  <div class="hero-grid">
+    <div>
+      <div class="hero-eyebrow" data-anim><span class="dot"></span> Sesión iniciada</div>
+      <h1 data-anim>Hola, soy <span class="accent">Onix Manager</span><span class="sub">CEO &amp; Fundador // Tecnologías Onix</span></h1>
+      <p class="hero-desc" data-anim>CEO y Fundador de <strong>Tecnologías Onix</strong>, el grupo tecnológico que engloba mis distintos productos y proyectos digitales. Mi foco principal es liderar y hacer crecer este ecosistema, creando soluciones tecnológicas eficientes, escalables y adaptadas a la nueva era digital.</p>
+      <div class="hero-cta-row" data-anim>
+        <a href="#sec-contacto" class="btn-primary" data-jump><i class="fas fa-satellite-dish"></i> Contáctame</a>
+        <a href="#sec-proyectos" class="btn-ghost" data-jump><i class="fas fa-rocket"></i> Explorar misiones</a>
+      </div>
+      <div class="hero-stats" data-anim>
+        <div class="hstat"><div class="hstat-top"><span>Liderazgo</span><span>98</span></div><div class="hstat-track"><div class="hstat-fill" data-w="98" style="background:linear-gradient(90deg,var(--gold),var(--gold-hi));"></div></div></div>
+        <div class="hstat"><div class="hstat-top"><span>Ejecución</span><span>95</span></div><div class="hstat-track"><div class="hstat-fill" data-w="95" style="background:linear-gradient(90deg,var(--cyan),#7dfff9);"></div></div></div>
+        <div class="hstat"><div class="hstat-top"><span>Proyectos activos</span><span>14</span></div><div class="hstat-track"><div class="hstat-fill" data-w="82" style="background:linear-gradient(90deg,var(--magenta),#ff8ccb);"></div></div></div>
+      </div>
+    </div>
+
+    <div class="hero-core-wrap" data-anim-core>
+      <div class="hero-core">
+        <div class="core-ring cr3"></div>
+        <div class="core-ring cr2"></div>
+        <div class="core-orbit o2"><div class="core-orbit-dot"></div></div>
+        <div class="core-ring cr1"></div>
+        <div class="core-orbit"><div class="core-orbit-dot"></div></div>
+        <div class="core-canvas-wrap" id="coreWrap">
+          <img id="coreImg" src="core-frames/logo-hero.jpg" alt="Núcleo Tecnologías Onix" draggable="false">
+          <div class="core-scan"></div>
+        </div>
+        <div class="core-hint"><i class="fas fa-arrows-left-right"></i> Arrastra para rotar el núcleo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-scroll-cue" data-anim><span>DESPLÁZATE</span><div class="line"></div></div>
+</section>
+</div>
+
+<div class="section-divider container"></div>
+
+<!-- ═══ MISSION MAP — Mis Proyectos ═══ -->
+<div class="container">
+<section class="section" id="sec-proyectos" data-section="proyectos" data-hud-label="MIS PROYECTOS">
+  <div class="sec-head reveal-up">
+    <div class="eyebrow">Registro de misiones</div>
+    <h2>Plataformas y servicios activos que he creado</h2>
+    <p>Cada nodo es un proyecto real, en producción. Selecciona una misión para ver los detalles y acceder.</p>
+  </div>
+
+  <div class="map-wrap">
+    <div class="node-grid" id="ownProjectsGrid">
+      <!-- 01 -->
+      <article class="node reveal-node" data-mid="p1" style="--node-color:#00b4d8; --node-dim:rgba(0,180,216,0.14); --node-glow:rgba(0,180,216,0.16);">
+        <span class="node-id">N·01</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-globe"></i></div><span class="node-tag live">ACTIVA</span></div>
+        <h3>Tecnologías Onix</h3>
+        <p>Soluciones tecnológicas y desarrollo web para negocios tradicionales.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <!-- 02 -->
+      <article class="node reveal-node" data-mid="p2" style="--node-color:#f2b13a; --node-dim:rgba(242,177,58,0.14); --node-glow:rgba(242,177,58,0.16);">
+        <span class="node-id">N·02</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-calendar-check"></i></div><span class="node-tag live">ACTIVA</span></div>
+        <h3>Cita Manager</h3>
+        <p>Gestor de citas en línea para cualquier tipo de negocio.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <!-- 03 -->
+      <article class="node reveal-node" data-mid="p3" style="--node-color:#34d399; --node-dim:rgba(52,211,153,0.14); --node-glow:rgba(52,211,153,0.16);">
+        <span class="node-id">N·03</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-graduation-cap"></i></div><span class="node-tag live">ACTIVA</span></div>
+        <h3>Onix Crypto Manager</h3>
+        <p>Plataforma de educación financiera y cripto con cursos, herramientas y comunidad.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <!-- 04 -->
+      <article class="node reveal-node" data-mid="p4" style="--node-color:#e85c5c; --node-dim:rgba(232,92,92,0.14); --node-glow:rgba(232,92,92,0.16);">
+        <span class="node-id">N·04</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-coins"></i></div><span class="node-tag live">ACTIVA</span></div>
+        <h3>Crypto Alien Click</h3>
+        <p>Proyecto crypto capaz de generar tokens gratis.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <!-- 05 -->
+      <article class="node reveal-node" data-mid="p5" style="--node-color:#a78bfa; --node-dim:rgba(167,139,250,0.14); --node-glow:rgba(167,139,250,0.16);">
+        <span class="node-id">N·05</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-film"></i></div><span class="node-tag live">ACTIVA</span></div>
+        <h3>Cinonix</h3>
+        <p>Contenido audiovisual, películas y series, entretenimiento.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <!-- 06 -->
+      <article class="node locked reveal-node" data-mid="p6" style="--node-color:#f06292; --node-dim:rgba(240,98,146,0.14);">
+        <span class="node-id">N·06</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-bullhorn"></i></div><span class="node-tag soon">PRÓXIMAMENTE</span></div>
+        <h3>Zona VIP Trends</h3>
+        <p>Agencia de publicidad automatizada y gestión de redes sociales.</p>
+        <span class="node-lock-icn"><i class="fas fa-lock"></i> Bloqueada</span>
+      </article>
+      <!-- 07 -->
+      <article class="node locked reveal-node" data-mid="p7" style="--node-color:#448aff; --node-dim:rgba(68,138,255,0.14);">
+        <span class="node-id">N·07</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-robot"></i></div><span class="node-tag soon">PRÓXIMAMENTE</span></div>
+        <h3>LeadGen Ai</h3>
+        <p>Captador de clientes investigados con IA, campañas de email marketing y telefónica.</p>
+        <span class="node-lock-icn"><i class="fas fa-lock"></i> Bloqueada</span>
+      </article>
+      <!-- 08 -->
+      <article class="node locked reveal-node" data-mid="p8" style="--node-color:#ff6b6b; --node-dim:rgba(255,107,107,0.14);">
+        <span class="node-id">N·08</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-comments"></i></div><span class="node-tag soon">PRÓXIMAMENTE</span></div>
+        <h3>Eider Ai</h3>
+        <p>Chat inteligente capaz de gestionar como asistente de cualquier negocio.</p>
+        <span class="node-lock-icn"><i class="fas fa-lock"></i> Bloqueada</span>
+      </article>
+      <!-- 09 -->
+      <article class="node locked reveal-node" data-mid="p9" style="--node-color:#e0f7ff; --node-dim:rgba(224,247,255,0.14);">
+        <span class="node-id">N·09</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-lock"></i></div><span class="node-tag soon">PRÓXIMAMENTE</span></div>
+        <h3>Lynx Market</h3>
+        <p>Top secret.</p>
+        <span class="node-lock-icn"><i class="fas fa-lock"></i> Clasificada</span>
+      </article>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="section-divider container"></div>
+
+<!-- ═══ MISSION MAP — Proyectos para terceros ═══ -->
+<div class="container">
+<section class="section" id="sec-terceros" data-section="terceros" data-hud-label="TERCEROS">
+  <div class="sec-head reveal-up">
+    <div class="eyebrow">Contratos externos</div>
+    <h2>Plataformas que he creado para terceros</h2>
+    <p>Misiones completadas para otros fundadores y marcas.</p>
+  </div>
+
+  <div class="map-wrap">
+    <div class="node-grid" id="thirdProjectsGrid">
+      <article class="node reveal-node" data-mid="t1" style="--node-color:#00b4d8; --node-dim:rgba(0,180,216,0.14); --node-glow:rgba(0,180,216,0.16);">
+        <span class="node-id">T·01</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-cube"></i></div><span class="node-tag live">ENTREGADA</span></div>
+        <h3>The Cube</h3>
+        <p>Cubo de Rubik 3D interactivo.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <article class="node reveal-node" data-mid="t2" style="--node-color:#f06292; --node-dim:rgba(240,98,146,0.14); --node-glow:rgba(240,98,146,0.16);">
+        <span class="node-id">T·02</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-feather"></i></div><span class="node-tag live">ENTREGADA</span></div>
+        <h3>Destellos de Mariposa</h3>
+        <p>Landing page profesional para negocio.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <article class="node reveal-node" data-mid="t3" style="--node-color:#34d399; --node-dim:rgba(52,211,153,0.14); --node-glow:rgba(52,211,153,0.16);">
+        <span class="node-id">T·03</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-coins"></i></div><span class="node-tag live">ENTREGADA</span></div>
+        <h3>LottoSol</h3>
+        <p>Lotería descentralizada en la red blockchain de Solana.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <article class="node reveal-node" data-mid="t4" style="--node-color:#a78bfa; --node-dim:rgba(167,139,250,0.14); --node-glow:rgba(167,139,250,0.16);">
+        <span class="node-id">T·04</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-house"></i></div><span class="node-tag live">ENTREGADA</span></div>
+        <h3>Drew Nt Services</h3>
+        <p>Sitio web con envío de presupuesto directamente a WhatsApp.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+      <article class="node reveal-node" data-mid="t5" style="--node-color:#448aff; --node-dim:rgba(68,138,255,0.14); --node-glow:rgba(68,138,255,0.16);">
+        <span class="node-id">T·05</span>
+        <div class="node-top"><div class="node-icn"><i class="fas fa-globe"></i></div><span class="node-tag live">ENTREGADA</span></div>
+        <h3>1percent</h3>
+        <p>El primer token crypto integrado como moneda de pago en comercios físicos reales.</p>
+        <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
+      </article>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="section-divider container"></div>
+
+<!-- ═══ COMMS ARRAY — Redes sociales ═══ -->
+<div class="container">
+<section class="section" id="sec-comms" data-section="comms" data-hud-label="CANALES">
+  <div class="sec-head reveal-up" style="text-align:center; margin-left:auto; margin-right:auto;">
+    <div class="eyebrow" style="justify-content:center;">Array de comunicación</div>
+    <h2>Sígueme en mis canales</h2>
+    <p style="margin-left:auto; margin-right:auto;">Conecta conmigo en tiempo real a través de cualquiera de estas frecuencias.</p>
+  </div>
+  <div class="comms-grid">
+    <a href="https://t.me/+PFIS9sSrP3UwOTk8" target="_blank" rel="noopener" class="comm-node telegram reveal-node"><div class="comm-icn"><i class="fab fa-telegram-plane"></i></div><span>Telegram</span></a>
+    <a href="https://x.com/OMannager" target="_blank" rel="noopener" class="comm-node twitter reveal-node"><div class="comm-icn"><i class="fab fa-twitter"></i></div><span>Twitter</span></a>
+    <a href="https://youtube.com/@onixmanager" target="_blank" rel="noopener" class="comm-node youtube reveal-node"><div class="comm-icn"><i class="fab fa-youtube"></i></div><span>YouTube</span></a>
+    <a href="https://www.instagram.com/onixmanager" target="_blank" rel="noopener" class="comm-node instagram reveal-node"><div class="comm-icn"><i class="fab fa-instagram"></i></div><span>Instagram</span></a>
+    <a href="https://www.facebook.com/zoehdpworkinghard" target="_blank" rel="noopener" class="comm-node facebook reveal-node"><div class="comm-icn"><i class="fab fa-facebook-f"></i></div><span>Facebook</span></a>
+  </div>
+</section>
+</div>
+
+<div class="section-divider container"></div>
+
+<!-- ═══ TRANSMIT — Formulario de contacto ═══ -->
+<div class="container">
+<section class="section" id="sec-contacto" data-section="contacto" data-hud-label="CONTACTO">
+  <div class="sec-head reveal-up" style="text-align:center; margin-left:auto; margin-right:auto;">
+    <div class="eyebrow" style="justify-content:center;">Canal directo</div>
+    <h2>¿Tienes un proyecto o duda?</h2>
+  </div>
+  <div class="term-wrap reveal-up">
+    <div class="term">
+      <div class="term-bar"><div class="term-dot" style="background:#ff5f56;"></div><div class="term-dot" style="background:#ffbd2e;"></div><div class="term-dot" style="background:#27c93f;"></div><span class="term-bar-label">TRANSMISION_ONIX.exe</span></div>
+      <div class="term-body">
+        <div id="termFormWrap">
+          <div class="term-line">Nueva transmisión entrante <span class="term-cursor"></span></div>
+          <form id="contact-form" action="https://api.web3forms.com/submit" method="POST">
+            <input type="hidden" name="access_key" value="0b9183aa-6cdd-4fee-9bfa-f3b2350cbfba">
+            <input type="hidden" name="redirect" value="">
+            <div class="field"><label>Identificación</label><input type="text" name="name" placeholder="Tu nombre" required></div>
+            <div class="field"><label>Frecuencia de retorno</label><input type="email" name="email" placeholder="Tu email" required></div>
+            <div class="field"><label>Mensaje</label><textarea name="message" placeholder="Cuéntame en qué puedo ayudarte..." required></textarea></div>
+            <button type="submit" class="btn-transmit"><i class="fas fa-paper-plane"></i> Enviar transmisión</button>
+          </form>
+          <div class="term-note"><i class="fas fa-lightbulb"></i> ¿Necesitas crear o diseñar un proyecto o negocio digital? Escríbeme y conversemos.</div>
+        </div>
+        <div class="term-success" id="termSuccess">
+          <i class="fas fa-check-circle"></i>
+          <h3>¡Transmisión recibida!</h3>
+          <p style="color:var(--ink2); font-size:.9rem;">Gracias por contactarme. Te responderé en cuanto pueda.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="footer">
+  <p>&copy; 2026 Onix Manager — Todos los derechos reservados.</p>
+</div>
+</div>
+
+<a href="https://wa.me/34643229507" target="_blank" rel="noopener" class="wa-float" aria-label="Chatea por WhatsApp"><i class="fab fa-whatsapp"></i></a>
+
+<div id="mapPanel">
+  <div class="map-panel-title">Salto rápido</div>
+  <div class="map-panel-item" data-jump-to="sec-hero"><span class="dotm"></span> Inicio</div>
+  <div class="map-panel-item" data-jump-to="sec-proyectos"><span class="dotm"></span> Mis proyectos</div>
+  <div class="map-panel-item" data-jump-to="sec-terceros"><span class="dotm"></span> Para terceros</div>
+  <div class="map-panel-item" data-jump-to="sec-comms"><span class="dotm"></span> Canales</div>
+  <div class="map-panel-item" data-jump-to="sec-contacto"><span class="dotm"></span> Contacto</div>
+</div>
+
+<!-- game content mounts here in later edits -->
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   ONIX // SYSTEM — game engine core
+   Sin dependencias externas. Audio sintetizado (WebAudio), sin assets
+   de sonido. Sin localStorage (progreso vive en memoria de sesión).
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isTouch = matchMedia('(hover:none), (pointer:coarse)').matches;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ---------- AUDIO ENGINE (sintetizado, cero archivos) ---------- */
+const SFX = (function(){
+  let ctx=null, master=null, enabled=true;
+  function ensure(){
+    if(ctx) return;
+    try{
+      ctx = new (window.AudioContext||window.webkitAudioContext)();
+      master = ctx.createGain(); master.gain.value = 0.34; master.connect(ctx.destination);
+    }catch(e){ enabled=false; }
+  }
+  function tone(freq, dur, type, vol, glideTo, delay){
+    if(!enabled) return; ensure(); if(!ctx) return;
+    if(ctx.state==='suspended') ctx.resume();
+    const t0 = ctx.currentTime + (delay||0);
+    const osc = ctx.createOscillator(); const g = ctx.createGain();
+    osc.type = type||'sine'; osc.frequency.setValueAtTime(freq, t0);
+    if(glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t0+dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol||0.22, t0+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    osc.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0+dur+0.05);
+  }
+  function noiseBurst(dur, vol, delay){
+    if(!enabled) return; ensure(); if(!ctx) return;
+    const t0 = ctx.currentTime + (delay||0);
+    const bufSize = ctx.sampleRate*dur;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for(let i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufSize);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const g = ctx.createGain(); g.gain.setValueAtTime(vol||0.12, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    const filt = ctx.createBiquadFilter(); filt.type='highpass'; filt.frequency.value=1800;
+    src.connect(filt); filt.connect(g); g.connect(master);
+    src.start(t0);
+  }
+  return {
+    hover(){ tone(740,0.06,'sine',0.05); },
+    select(){ tone(420,0.09,'triangle',0.12,760); },
+    unlock(){ tone(523,0.12,'sine',0.16,1046); tone(659,0.16,'sine',0.13,0,0.09); tone(784,0.22,'sine',0.14,0,0.18); },
+    warp(){ tone(120,0.5,'sawtooth',0.1,680); noiseBurst(0.35,0.08,0.02); },
+    click(){ tone(880,0.045,'square',0.07); },
+    open(){ tone(300,0.14,'sine',0.12,600); noiseBurst(0.08,0.05); },
+    close(){ tone(500,0.1,'sine',0.1,220); },
+    toggleOn(){ tone(600,0.08,'sine',0.1,900); },
+    toggleOff(){ tone(600,0.08,'sine',0.1,320); },
+    setEnabled(v){ enabled=v; if(v) ensure(); },
+    get isEnabled(){ return enabled; }
+  };
+})();
+
+/* ---------- AIM CURSOR ---------- */
+if(!isTouch){
+  const aim = document.getElementById('aim');
+  window.addEventListener('pointermove', e=>{ aim.style.left=e.clientX+'px'; aim.style.top=e.clientY+'px'; }, {passive:true});
+  document.addEventListener('pointerdown', ()=>{ aim.style.transform='translate(-50%,-50%) scale(0.7)'; });
+  document.addEventListener('pointerup', ()=>{ aim.style.transform='translate(-50%,-50%) scale(1)'; });
+}
+
+/* ---------- STARFIELD CANVAS (parallax + hyperspeed on warp) ---------- */
+const worldCanvas = document.getElementById('worldCanvas');
+const wctx = worldCanvas.getContext('2d');
+let W=0,H=0,DPR=Math.min(window.devicePixelRatio||1,2);
+let stars=[];
+let mx=0,my=0, cmx=0,cmy=0;
+let warpFactor=0; // 0..1, se activa en transiciones para dar sensación de "hyperjump"
+
+function resizeWorld(){
+  W = window.innerWidth; H = window.innerHeight;
+  worldCanvas.width = W*DPR; worldCanvas.height = H*DPR;
+  worldCanvas.style.width=W+'px'; worldCanvas.style.height=H+'px';
+  wctx.setTransform(DPR,0,0,DPR,0,0);
+  const target = Math.round((W*H)/9000);
+  stars = new Array(clamp(target,90,240)).fill(0).map(()=>({
+    x:(Math.random()-0.5)*W*1.6, y:(Math.random()-0.5)*H*1.6,
+    z:Math.random()*1+0.15, tw:Math.random()*Math.PI*2
+  }));
+}
+window.addEventListener('resize', resizeWorld);
+resizeWorld();
+
+if(!isTouch){
+  window.addEventListener('pointermove', e=>{
+    mx = (e.clientX/W)*2-1; my=(e.clientY/H)*2-1;
+  }, {passive:true});
+}
+
+let frameT=0;
+function drawWorld(){
+  frameT += 0.016;
+  cmx += (mx-cmx)*0.04; cmy += (my-cmy)*0.04;
+  wctx.clearRect(0,0,W,H);
+  const cx=W/2, cy=H/2;
+  warpFactor += ((warpFactor>0.02?warpFactor*0.9:0)-warpFactor)*0; // decay handled by trigger
+  warpFactor = Math.max(0, warpFactor-0.012);
+
+  for(const s of stars){
+    const par = 26*s.z;
+    let sx = cx + s.x*0.5 + cmx*par;
+    let sy = cy + s.y*0.5 + cmy*par;
+    // wrap
+    sx = ((sx % W)+W)%W; sy=((sy % H)+H)%H;
+    const twinkle = 0.5+0.5*Math.sin(frameT*1.4+s.tw);
+    const r = (0.6+s.z*1.6) * (1+warpFactor*2.2);
+    wctx.beginPath();
+    if(warpFactor>0.02){
+      const stretch = warpFactor*90*s.z;
+      const dx = (sx-cx)*0.02*stretch, dy=(sy-cy)*0.02*stretch;
+      wctx.strokeStyle = `rgba(242,177,58,${0.15+twinkle*0.25})`;
+      wctx.lineWidth = r*0.8;
+      wctx.moveTo(sx-dx, sy-dy); wctx.lineTo(sx+dx, sy+dy); wctx.stroke();
+    } else {
+      wctx.fillStyle = `rgba(230,235,250,${0.25+twinkle*0.55*s.z})`;
+      wctx.arc(sx, sy, r, 0, Math.PI*2); wctx.fill();
+    }
+  }
+  requestAnimationFrame(drawWorld);
+}
+requestAnimationFrame(drawWorld);
+function triggerWarp(){ warpFactor = 1; }
+
+/* ---------- BOOT SEQUENCE ---------- */
+const bootEl = document.getElementById('boot');
+const bootBar = document.getElementById('bootBar');
+const bootPct = document.getElementById('bootPct');
+let bp=0;
+const bootMsgs = ['INICIALIZANDO NÚCLEO','CARGANDO ACTIVOS','COMPILANDO SHADERS','SINCRONIZANDO DATOS','CASI LISTO'];
+const bootTimer = setInterval(()=>{
+  bp += Math.random()*18+8;
+  if(bp>=100){
+    bp=100; clearInterval(bootTimer);
+    bootBar.style.width='100%'; bootPct.textContent='LISTO · 100%';
+    setTimeout(()=>{
+      bootEl.classList.add('hide');
+      document.getElementById('hud').classList.add('in');
+      SFX.warp();
+      setTimeout(()=>window.__onixReveal && window.__onixReveal(), 250);
+    }, 380);
+    return;
+  }
+  bootBar.style.width=bp+'%';
+  bootPct.textContent = bootMsgs[Math.min(bootMsgs.length-1, Math.floor(bp/22))] + ' · ' + Math.floor(bp)+'%';
+}, 160);
+
+/* ---------- SOUND TOGGLE ---------- */
+const soundBtn = document.getElementById('soundToggle');
+soundBtn.addEventListener('click', ()=>{
+  const next = !SFX.isEnabled;
+  SFX.setEnabled(next);
+  soundBtn.classList.toggle('active', next);
+  soundBtn.innerHTML = next? '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-mute"></i>';
+  if(next) SFX.toggleOn(); 
+});
+soundBtn.classList.add('active');
+
+/* ---------- HOLOGRAPHIC CORE — real 3D tilt on the logo plate ---------- */
+(function(){
+  const wrap = document.getElementById('coreWrap');
+  const img = document.getElementById('coreImg');
+  if(!wrap || !img) return;
+  let rotX=0, rotY=0, curX=0, curY=0, dragging=false, lastX=0, lastY=0;
+  let idleAngle=0, lastInteract=performance.now();
+
+  wrap.addEventListener('pointerdown', e=>{
+    dragging=true; lastX=e.clientX; lastY=e.clientY; wrap.setPointerCapture(e.pointerId);
+    window.ONIX.SFX.click();
+  });
+  wrap.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+    rotY += dx*0.4; rotX -= dy*0.4;
+    rotX = clamp(rotX,-28,28);
+    lastInteract = performance.now();
+  });
+  function endDrag(){ dragging=false; lastInteract=performance.now(); }
+  wrap.addEventListener('pointerup', endDrag);
+  wrap.addEventListener('pointerleave', endDrag);
+  wrap.addEventListener('pointercancel', endDrag);
+
+  function tick(){
+    curX += (rotX-curX)*0.12; curY += (rotY-curY)*0.12;
+    const idle = performance.now()-lastInteract;
+    let dispY = curY, dispX = curX;
+    if(idle>2400 && !dragging && !window.ONIX.reduceMotion){
+      idleAngle += 0.006;
+      dispY = curY + Math.sin(idleAngle)*10;
+      dispX = curX + Math.cos(idleAngle*0.7)*3;
+    }
+    img.style.transform = `rotateX(${dispX}deg) rotateY(${dispY}deg) scale(1.04)`;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+
+/* ---------- HERO ENTRANCE ANIMATION ---------- */
+window.__onixReveal = function(){
+  const els = document.querySelectorAll('#sec-hero [data-anim]');
+  els.forEach((el,i)=>{
+    setTimeout(()=>{
+      el.style.transition='opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1)';
+      el.style.opacity='1'; el.style.transform='translateY(0)';
+    }, i*90);
+  });
+  const core = document.querySelector('[data-anim-core]');
+  if(core){
+    setTimeout(()=>{
+      core.style.transition='opacity 1s ease, transform 1s cubic-bezier(.2,.8,.2,1)';
+      core.style.opacity='1'; core.style.transform='scale(1)';
+    }, 200);
+  }
+  setTimeout(()=>{
+    document.querySelectorAll('.hstat-fill').forEach(f=>{ f.style.width = f.dataset.w+'%'; });
+  }, 700);
+};
+
+/* expose core to later script blocks */
+window.ONIX = { SFX, clamp, lerp, reduceMotion, isTouch, triggerWarp };
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   MISSION DATA + MODAL SYSTEM
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  const MISSIONS = {
+    p1:{n:'N·01', icon:'fa-globe', color:'#00b4d8', dim:'rgba(0,180,216,0.14)', title:'Tecnologías Onix', desc:'Soluciones tecnológicas y desarrollo web para negocios tradicionales. La base de todo el ecosistema Onix.', url:'https://tecnologiasonix.com/', status:'live'},
+    p2:{n:'N·02', icon:'fa-calendar-check', color:'#f2b13a', dim:'rgba(242,177,58,0.14)', title:'Cita Manager', desc:'Gestor de citas en línea para cualquier tipo de negocio.', url:'https://citamanager.tecnologiasonix.com/', status:'live'},
+    p3:{n:'N·03', icon:'fa-graduation-cap', color:'#34d399', dim:'rgba(52,211,153,0.14)', title:'Onix Crypto Manager', desc:'Plataforma de educación financiera y cripto con cursos, herramientas y comunidad.', url:'https://cryptomanager.tecnologiasonix.com/', status:'live'},
+    p4:{n:'N·04', icon:'fa-coins', color:'#e85c5c', dim:'rgba(232,92,92,0.14)', title:'Crypto Alien Click', desc:'Proyecto crypto capaz de generar tokens gratis.', url:'https://cryptoalien.vercel.app/landing.html', status:'live'},
+    p5:{n:'N·05', icon:'fa-film', color:'#a78bfa', dim:'rgba(167,139,250,0.14)', title:'Cinonix', desc:'Contenido audiovisual, películas y series, entretenimiento.', url:'https://cinonix.vercel.app/cinonix.html', status:'live'},
+    p6:{n:'N·06', icon:'fa-bullhorn', color:'#f06292', dim:'rgba(240,98,146,0.14)', title:'Zona VIP Trends', desc:'Agencia de publicidad automatizada y gestión de redes sociales. Esta misión aún no se ha desbloqueado.', status:'soon'},
+    p7:{n:'N·07', icon:'fa-robot', color:'#448aff', dim:'rgba(68,138,255,0.14)', title:'LeadGen Ai', desc:'Captador de clientes investigados con IA, campañas de email marketing y telefónica. Esta misión aún no se ha desbloqueado.', status:'soon'},
+    p8:{n:'N·08', icon:'fa-comments', color:'#ff6b6b', dim:'rgba(255,107,107,0.14)', title:'Eider Ai', desc:'Chat inteligente capaz de gestionar como asistente de cualquier negocio. Esta misión aún no se ha desbloqueado.', status:'soon'},
+    p9:{n:'N·09', icon:'fa-lock', color:'#e0f7ff', dim:'rgba(224,247,255,0.14)', title:'Lynx Market', desc:'Top secret. Información clasificada hasta nuevo aviso.', status:'soon'},
+    t1:{n:'T·01', icon:'fa-cube', color:'#00b4d8', dim:'rgba(0,180,216,0.14)', title:'The Cube', desc:'Cubo de Rubik 3D interactivo, desarrollado para un cliente externo.', url:'https://cuboderubik.vercel.app/', status:'live'},
+    t2:{n:'T·02', icon:'fa-feather', color:'#f06292', dim:'rgba(240,98,146,0.14)', title:'Destellos de Mariposa', desc:'Landing page profesional para negocio.', url:'https://destellosdemariposa.com/', status:'live'},
+    t3:{n:'T·03', icon:'fa-coins', color:'#34d399', dim:'rgba(52,211,153,0.14)', title:'LottoSol', desc:'Lotería descentralizada en la red blockchain de Solana.', url:'https://lottery-solana-psi.vercel.app/', status:'live'},
+    t4:{n:'T·04', icon:'fa-house', color:'#a78bfa', dim:'rgba(167,139,250,0.14)', title:'Drew Nt Services', desc:'Sitio web con envío de presupuesto directamente a WhatsApp.', url:'https://www.drewntservices.com', status:'live'},
+    t5:{n:'T·05', icon:'fa-globe', color:'#448aff', dim:'rgba(68,138,255,0.14)', title:'1percent', desc:'El primer token crypto integrado como moneda de pago en comercios físicos reales.', url:'https://www.1percent-crypto.com/', status:'live'}
+  };
+
+  const modal = document.getElementById('missionModal');
+  const mmCard = document.getElementById('mmCard');
+  const mmIcn = document.getElementById('mmIcn');
+  const mmEyebrow = document.getElementById('mmEyebrow');
+  const mmTitle = document.getElementById('mmTitle');
+  const mmDesc = document.getElementById('mmDesc');
+  const mmActions = document.getElementById('mmActions');
+
+  function openMission(id){
+    const m = MISSIONS[id];
+    if(!m) return;
+    mmCard.style.setProperty('--mm-color', m.color);
+    mmCard.style.setProperty('--mm-dim', m.dim);
+    mmIcn.innerHTML = `<i class="fas ${m.icon}"></i>`;
+    mmEyebrow.textContent = 'MISIÓN ' + m.n + (m.status==='live' ? ' · ACTIVA' : ' · BLOQUEADA');
+    mmTitle.textContent = m.title;
+    mmDesc.textContent = m.desc;
+    if(m.status==='live' && m.url){
+      mmActions.innerHTML = `<a href="${m.url}" target="_blank" rel="noopener" class="mm-go"><i class="fas fa-rocket"></i> Iniciar misión</a>`;
+    } else {
+      mmActions.innerHTML = `<span class="mm-soon-badge"><i class="fas fa-lock"></i> Se desbloqueará próximamente</span>`;
+    }
+    modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';
+    window.ONIX.SFX.open();
+    window.dispatchEvent(new CustomEvent('onix:mission-viewed', {detail:{id}}));
+  }
+  function closeMission(){
+    modal.classList.remove('open'); modal.setAttribute('aria-hidden','true');
+    document.body.style.overflow='';
+    window.ONIX.SFX.close();
+  }
+
+  document.querySelectorAll('.node').forEach(node=>{
+    node.addEventListener('click', ()=>{ openMission(node.dataset.mid); window.ONIX.SFX.select(); });
+    node.addEventListener('mouseenter', ()=>{ if(!window.ONIX.isTouch) window.ONIX.SFX.hover(); });
+    node.setAttribute('role','button'); node.setAttribute('tabindex','0');
+    node.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openMission(node.dataset.mid); } });
+  });
+  modal.querySelectorAll('[data-mm-close]').forEach(el=>el.addEventListener('click', closeMission));
+  window.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.classList.contains('open')) closeMission(); });
+
+  /* ---------- Reveal nodes on scroll ---------- */
+  const nodeObserver = new IntersectionObserver((entries)=>{
+    entries.forEach((entry,i)=>{
+      if(entry.isIntersecting){
+        setTimeout(()=>entry.target.classList.add('in'), i*40);
+        nodeObserver.unobserve(entry.target);
+      }
+    });
+  }, {threshold:0.15});
+  document.querySelectorAll('.reveal-node').forEach(el=>nodeObserver.observe(el));
+
+  const upObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{ if(entry.isIntersecting) entry.target.classList.add('in'); });
+  }, {threshold:0.2});
+  document.querySelectorAll('.reveal-up').forEach(el=>upObserver.observe(el));
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   CONTACT FORM
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  const form = document.getElementById('contact-form');
+  if(!form) return;
+  const formWrap = document.getElementById('termFormWrap');
+  const success = document.getElementById('termSuccess');
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const submitBtn = form.querySelector('.btn-transmit');
+    const originalHtml = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Transmitiendo...';
+    submitBtn.disabled = true;
+    try{
+      const res = await fetch('https://api.web3forms.com/submit', {method:'POST', body:new FormData(form)});
+      const data = await res.json();
+      if(data.success){
+        formWrap.style.display='none'; success.style.display='block';
+        window.ONIX.SFX.unlock();
+        awardXP('contact');
+      } else {
+        alert('Hubo un problema. Inténtalo de nuevo.');
+        submitBtn.innerHTML = originalHtml; submitBtn.disabled=false;
+      }
+    }catch(err){
+      alert('Error de conexión.');
+      submitBtn.innerHTML = originalHtml; submitBtn.disabled=false;
+    }
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   NAVIGATION — smooth jump + quick-nav map panel + HUD progress
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  function smoothJumpTo(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    window.ONIX.SFX.warp();
+    el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  document.querySelectorAll('[data-jump]').forEach(a=>{
+    a.addEventListener('click', e=>{
+      const href = a.getAttribute('href');
+      if(href && href.startsWith('#')){ e.preventDefault(); smoothJumpTo(href.slice(1)); }
+    });
+  });
+
+  const mapToggle = document.getElementById('mapToggle');
+  const mapPanel = document.getElementById('mapPanel');
+  mapToggle.addEventListener('click', ()=>{
+    const willOpen = !mapPanel.classList.contains('open');
+    mapPanel.classList.toggle('open');
+    mapToggle.classList.toggle('active', willOpen);
+    window.ONIX.SFX.click();
+  });
+  document.querySelectorAll('[data-jump-to]').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      smoothJumpTo(item.dataset.jumpTo);
+      mapPanel.classList.remove('open'); mapToggle.classList.remove('active');
+    });
+  });
+  document.addEventListener('click', e=>{
+    if(!mapPanel.contains(e.target) && !mapToggle.contains(e.target)){
+      mapPanel.classList.remove('open'); mapToggle.classList.remove('active');
+    }
+  });
+
+  /* ---------- XP / progress tracking ---------- */
+  const sections = Array.from(document.querySelectorAll('[data-section]'));
+  const visited = new Set();
+  const hudFill = document.getElementById('hudXpFill');
+  const hudPct = document.getElementById('hudXpPct');
+  const hudNodesWrap = document.getElementById('hudNodes');
+  const missionsSeen = new Set();
+  const TOTAL_UNITS = sections.length + 3; // secciones + 3 hitos especiales (misión vista, contacto, exploración completa)
+
+  sections.forEach(sec=>{
+    const dot = document.createElement('div');
+    dot.className='hud-node'; dot.dataset.label = sec.dataset.hudLabel || sec.id;
+    dot.addEventListener('click', ()=>smoothJumpTo(sec.id));
+    hudNodesWrap.appendChild(dot);
+  });
+  const hudDots = Array.from(hudNodesWrap.children);
+
+  function updateXP(){
+    const pct = Math.round(Math.min(100, (visited.size + missionsSeen.size*0.4) / TOTAL_UNITS * 100));
+    hudFill.style.width = pct+'%';
+    hudPct.textContent = pct+'%';
+  }
+  window.awardXP = function(kind){
+    if(kind==='contact') visited.add('__contact_bonus');
+    updateXP();
+    showToast('fa-star','Logro desbloqueado','Transmisión enviada con éxito');
+  };
+
+  const secObserver = new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      const id = entry.target.id;
+      const idx = sections.indexOf(entry.target);
+      if(entry.isIntersecting){
+        hudDots.forEach((d,i)=>d.classList.toggle('here', i===idx));
+        if(!visited.has(id)){
+          visited.add(id);
+          hudDots[idx].classList.add('done');
+          updateXP();
+          if(id!=='sec-hero'){
+            showToast('fa-map-pin','Zona explorada', entry.target.dataset.hudLabel || id);
+          }
+        }
+      }
+    });
+  }, {threshold:0.4});
+  sections.forEach(sec=>secObserver.observe(sec));
+
+  window.addEventListener('onix:mission-viewed', e=>{
+    if(!missionsSeen.has(e.detail.id)){ missionsSeen.add(e.detail.id); updateXP(); }
+  });
+
+  /* ---------- Toast notifications ---------- */
+  const toastLayer = document.getElementById('toastLayer');
+  let toastBusy = false, toastQueue = [];
+  function showToast(icon, label, text){
+    toastQueue.push({icon,label,text});
+    if(!toastBusy) drainToast();
+  }
+  function drainToast(){
+    const item = toastQueue.shift();
+    if(!item){ toastBusy=false; return; }
+    toastBusy = true;
+    const el = document.createElement('div');
+    el.className='toast';
+    el.innerHTML = `<div class="toast-icn"><i class="fas ${item.icon}"></i></div><div class="toast-txt"><div class="tt1">${item.label}</div><div class="tt2">${item.text}</div></div>`;
+    toastLayer.appendChild(el);
+    requestAnimationFrame(()=>el.classList.add('in'));
+    setTimeout(()=>{
+      el.classList.remove('in');
+      setTimeout(()=>{ el.remove(); drainToast(); }, 500);
+    }, 2600);
+  }
+
+  updateXP();
+})();
+</script>
+
+</body>
+</html>
