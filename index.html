@@ -161,14 +161,50 @@
 
   /* Variante para eyebrow/h2 que se dibujan directamente sobre el vídeo de
      fondo (Mis Proyectos / Proyectos para terceros): mismo cristal
-     esmerilado que .facet-text, en vez del bloque negro sólido anterior. */
-  .eyebrow-glass{
-    background:rgba(9,11,15,0.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+     esmerilado que .facet-text, en vez del bloque negro sólido anterior.
+
+     FIX -- bug real encontrado y confirmado visualmente: esta regla usaba
+     el selector de una sola clase ".eyebrow-glass", con MENOS especificidad
+     que ".section-header .eyebrow" (línea de arriba, selector compuesto de
+     2 clases). Ambas reglas tocan text-shadow, y en CSS la especificidad
+     manda por encima del orden de aparición en el archivo -- así que pese a
+     estar declarada DESPUÉS, ".eyebrow-glass" perdía y el texto se quedaba
+     con la sombra débil de ".eyebrow" (0 1px 2px, pensada para fondo sólido
+     oscuro) en vez de la sombra fuerte var(--tt-glow) que este bloque
+     define (pensada, según el propio comentario de --tt-glow más arriba,
+     específicamente para "eyebrow/h2 de Proyectos"). Con una sombra tan
+     débil, el texto verde sobre las zonas claras del vídeo de fondo se veía
+     prácticamente borrado -- exactamente el síntoma reportado. Ahora
+     ".section-header .eyebrow-glass" iguala la especificidad de la regla de
+     arriba (2 clases) y además aparece después en el archivo, así que gana
+     por las dos vías: nunca vuelve a depender de un empate de especificidad
+     resuelto por casualidad de orden. Mismo fix aplicado a .h2-glass más
+     abajo, por el mismo motivo con ".section-header h2".
+
+     SEGUNDO FIX, mismo bloque -- confirmado con una página de prueba
+     aislada (mismo color, mismo text-shadow, mismo tamaño de fuente): sobre
+     un fondo oscuro sólido el texto se leía perfectamente, pero sobre una
+     zona CLARA del vídeo de fondo (simulada con magenta puro) el texto
+     seguía casi invisible incluso con el text-shadow ya corregido arriba.
+     Motivo: text-shadow solo oscurece el CONTORNO de las letras, no rellena
+     el interior de los trazos -- así que si el color de fondo que se cuela
+     a través del blur es lo bastante claro/saturado, el interior de cada
+     letra (que sigue siendo el rgba(9,11,15,0.55) mezclado con ese color de
+     fondo, no negro puro) pierde contraste contra el propio verde del
+     texto. Subir la opacidad del background (de 0.55/0.5 a 0.72/0.68) deja
+     pasar mucho menos color del fondo a través del blur, así que el
+     interior de las letras queda sobre una base consistentemente oscura sin
+     importar qué haya detrás -- pero sin llegar a un negro 100% opaco, que
+     eliminaría el efecto "cristal esmerilado" pretendido por el diseño
+     original. Verificado visualmente: con este valor el texto es legible
+     tanto sobre fondo oscuro como sobre la zona más clara de prueba. */
+  .section-header .eyebrow-glass{
+    background:rgba(9,11,15,0.72); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
     padding:.2rem .7rem; border-radius:6px; display:inline-block;
     border:1px solid rgba(0,255,65,0.18); text-shadow:var(--tt-glow);
   }
-  .h2-glass{
-    background:rgba(9,11,15,0.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  .section-header .h2-glass{
+    background:rgba(9,11,15,0.68); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
     padding:.2rem .6rem; border-radius:8px; display:inline; box-decoration-break:clone; -webkit-box-decoration-break:clone;
     text-shadow:var(--tt-glow);
   }
@@ -190,7 +226,11 @@
 
   /* ---------- MIS PROYECTOS / TERCEROS — prisma 3D con scroll ---------- */
   .driver{position:relative;}
-  .stage{position:sticky; top:0; height:100vh; display:flex; align-items:center; overflow:hidden;}
+  /* z-index:0 explícito: crea contexto de apilamiento propio para este
+     .stage, así su .stage-grid (z-index:2, más abajo) queda garantizado por
+     encima del canvas de fondo (#sobreLogo, z-index:-1) sin depender de que
+     ningún ancestro intermedio se quede sin z-index propio por accidente. */
+  .stage{position:sticky; top:0; height:100vh; display:flex; align-items:center; overflow:hidden; z-index:0;}
   .stage::before{
     content:''; position:absolute; inset:0;
     background:radial-gradient(ellipse 55% 50% at 78% 45%, rgba(0,255,65,0.10), transparent 60%);
@@ -605,6 +645,19 @@
   </div>
 </div>
 
+<!-- FIX: wrapper de ANCHO COMPLETO con fondo opaco + z-index propio.
+     La primera versión de este fix le puso background al propio
+     .container, pero .container tiene max-width:1100px y margin:0 auto,
+     así que su background solo cubre la franja central -- los laterales de
+     pantalla completa se quedaban sin ningún fondo propio delante del
+     canvas (#sobreLogo, z-index:-1, pantalla completa). Comprobado con
+     captura real: si el canvas conserva opacidad residual durante la
+     transición de salida, esas franjas laterales SÍ dejaban verse el frame
+     de fondo aunque el texto central ya estuviera protegido. Este wrapper
+     (sin max-width) sí cubre el 100% del ancho de la ventana, así que
+     ninguna franja lateral queda expuesta al canvas, pase lo que pase con
+     su estado de opacidad. -->
+<div style="position:relative; z-index:1; background:var(--bg);">
 <div class="container">
   <!-- Redes sociales -->
   <div class="section reveal">
@@ -649,6 +702,7 @@
     <p>&copy; 2026 Onix Manager — Todos los derechos reservados.</p>
   </div>
 </div>
+</div><!-- /fin wrapper de ancho completo (fondo opaco Redes/Formulario) -->
 
 <a href="https://wa.me/34643229507" target="_blank" class="whatsapp-float" aria-label="Chatea por WhatsApp">
   <i class="fab fa-whatsapp"></i>
@@ -932,7 +986,14 @@
   // updateHeroCube), así que la entrada a "Mis Proyectos" debe continuar
   // desde ESE frame real, no desde el último.
   const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 80));
-  const BG_OVERLAY_ALPHA = 0; // sin velo oscuro sobre el fondo fijo
+  // FIX: estaba en 0 ("sin velo oscuro"), lo que dejaba el contraste de los
+  // títulos (.eyebrow-glass / .h2-glass, fondo rgba(9,11,15,0.55)) a merced
+  // de que la zona del frame de fondo detrás de ellos fuese oscura por
+  // casualidad -- en zonas claras del frame el texto quedaba prácticamente
+  // ilegible ("tapado"/"borrado"). Un velo mínimo pero constante detrás de
+  // TODO el frame (no solo detrás del texto) asegura contraste sin tapar la
+  // imagen: sigue siendo perfectamente visible, solo un poco más oscura.
+  const BG_OVERLAY_ALPHA = 0.32;
 
   // Índice de la cara del cubo donde "vive" visualmente el canvas mientras
   // no es fondo (cara 1, la del video) -- usado para replicar su transform.
@@ -1016,8 +1077,28 @@
       // de soltar el canvas -- si se corta justo en thirdRect.bottom===0, el
       // fundido casi nunca llega a completarse y el fondo original (negro
       // liso de <body>) aparece de golpe en vez de desvanecido.
-      const EXIT_FADE = window.innerHeight * 0.35;
-      const inExitFade = thirdRect.bottom <= 0 && thirdRect.bottom > -EXIT_FADE;
+      //
+      // FIX: antes "inExitFade" comparaba thirdRect.bottom contra una
+      // ventana fija en px (thirdRect.bottom > -EXIT_FADE). Con scroll
+      // rápido (rueda del ratón, inercia de trackpad) el navegador puede
+      // saltarse esa ventana entera de un frame a otro -- pasar de
+      // thirdRect.bottom > 0 directamente a thirdRect.bottom < -EXIT_FADE --
+      // así que "shouldBeBg" caía a false sin que el fundido hubiese llegado
+      // nunca a opacity 0, y el bloque "!shouldBeBg && videoAsBg" de más
+      // abajo quitaba el canvas de golpe con el frame aún visible: eso es lo
+      // que se veía como "vuelve a aparecer el frame de fondo" al terminar
+      // Proyectos para terceros. Ahora "exitFadeT" es un progreso 0→1
+      // calculado con clamp(), nunca una comparación de rango: aunque el
+      // scroll salte varios px de un frame a otro, el valor cae dentro de
+      // [0,1] igualmente y la opacidad de salida (más abajo, en
+      // "shouldBeBg && videoAsBg") sigue una curva continua sin cortes.
+      // "inExitFade" seguimos necesitándolo tal cual para decidir si TODAVÍA
+      // debe considerarse fondo (shouldBeBg) -- ampliamos su ventana con la
+      // misma EXIT_FADE, generosa de sobra para no perder el fundido ni con
+      // saltos grandes de scroll.
+      const EXIT_FADE = Math.max(window.innerHeight * 0.6, 260);
+      const exitFadeT = clamp(-thirdRect.bottom / EXIT_FADE, 0, 1);
+      const inExitFade = thirdRect.bottom <= 0 && exitFadeT < 1;
       const shouldBeBg = inProjectsSection || inThirdSection || inExitFade;
 
       // El canvas NUNCA cambia de padre en el DOM (ver comentario junto a su
@@ -1048,6 +1129,15 @@
         sobreLogo.style.transform =
           `translateZ(-${depth}px) rotateX(${rotation}deg) ` +
           `rotateX(${-SOBRE_FACE_INDEX * HERO_ANGLE}deg) translateZ(${depth}px)`;
+        // FIX: limpia el opacity:0 inline que se fuerza justo al salir del
+        // modo "as-bg" (bloque de arriba). Sin esta línea el canvas se
+        // quedaría invisible para siempre dentro del cubo la próxima vez que
+        // el hero necesite mostrarlo (p.ej. al volver a scrollear hacia
+        // arriba desde "Mis Proyectos"), porque nada más en el código volvía
+        // a tocar su opacity inline. Al quitar el valor inline, vuelve a
+        // depender de la regla CSS '.is-ready' (opacity:1), que es el
+        // comportamiento original de esta fase.
+        if(sobreLogo.style.opacity === '0') sobreLogo.style.opacity = '';
       }
 
       if(shouldBeBg && videoAsBg){
@@ -1057,11 +1147,14 @@
         // de salida, a lo largo de todo el tramo inExitFade, así se ve como
         // un desvanecido continuo y no como un corte -- vuelve al negro
         // liso original (--bg del body) YA desvanecido, no de golpe.
-        let opacity = 1;
-        if(inExitFade){
-          const t = clamp(-thirdRect.bottom / EXIT_FADE, 0, 1);
-          opacity = 1 - smoothstep(t);
-        }
+        // Reutiliza el MISMO progreso (exitFadeT) calculado arriba para
+        // decidir inExitFade -- antes esta línea recalculaba "t" por su
+        // cuenta con su propia lectura de thirdRect.bottom; en teoría daba
+        // el mismo número, pero mantener dos cálculos separados de la misma
+        // cantidad es justo el tipo de duplicidad que se desincroniza si
+        // alguien toca una fórmula sin tocar la otra. Ahora solo hay una
+        // fuente de verdad para "en qué punto del fundido de salida estamos".
+        const opacity = inExitFade ? (1 - smoothstep(exitFadeT)) : 1;
         sobreLogo.style.opacity = String(opacity);
 
         // "Mis Proyectos": arranca EXACTAMENTE en el frame en el que el
@@ -1101,7 +1194,19 @@
       if(!shouldBeBg && videoAsBg){
         videoAsBg = false;
         sobreLogo.classList.remove('as-bg');
-        sobreLogo.style.opacity = '';
+        // FIX: la clase '.is-ready' (opacity:1) se añade una sola vez en
+        // preload() y ya nunca se quita, así que en el instante justo entre
+        // soltar '.as-bg' y que el bloque de abajo añada '.in-cube' (mismo
+        // tick, pero si algo -- p.ej. el resizeCanvas() de aquí abajo --
+        // fuerza un repintado intermedio) el canvas podía quedar sin ninguna
+        // clase de posicionamiento pero con opacity:1 heredado de
+        // '.is-ready', es decir, visible a pantalla completa sin el
+        // transform que lo saca de vista. Forzar opacity:0 aquí (en vez de
+        // limpiar el inline style con '') cierra esa ventana: el canvas
+        // arranca invisible y solo el bloque "!shouldBeBg && !videoAsBg" de
+        // más abajo (fase "dentro del cubo") lo deja con transform de nuevo,
+        // sin pasar nunca por un frame intermedio "visible y sin transform".
+        sobreLogo.style.opacity = '0';
         sobreLogo.style.width = '';
         sobreLogo.style.height = '';
         document.body.classList.remove('video-bg-active');
