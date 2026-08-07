@@ -144,7 +144,7 @@ button{font-family:inherit; cursor:pointer;}
   position:relative;
 }
 .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:3rem; align-items:center; width:100%;}
-@media (max-width:900px){ .hero-grid{grid-template-columns:1fr; gap:2.5rem; text-align:center;} }
+@media (max-width:900px){ .hero-grid{grid-template-columns:1fr; gap:2.5rem; text-align:center;} .hero-core-wrap{order:-1;} }
 
 .hero-eyebrow{
   display:inline-flex; align-items:center; gap:.5rem; font-family:var(--ff-mono); font-size:.68rem;
@@ -231,30 +231,80 @@ button{font-family:inherit; cursor:pointer;}
 .section{padding:6rem 0; position:relative;}
 .section-divider{height:1px; background:linear-gradient(90deg, transparent, var(--line-soft) 20%, var(--line-soft) 80%, transparent);}
 
-/* ══════════════ MISSION MAP — node-based project explorer ══════════════ */
+/* ══════════════ MISSION MAP — 3D carousel project explorer ══════════════ */
 .map-wrap{position:relative;}
 .map-svg-layer{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;}
 .map-svg-layer path{fill:none; stroke:var(--line); stroke-width:1.5; stroke-dasharray:4 6;}
 .map-svg-layer path.lit{stroke:var(--gold); stroke-dasharray:none; filter:drop-shadow(0 0 3px var(--gold));}
 
-.node-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; position:relative; z-index:2;}
-@media (max-width:900px){ .node-grid{grid-template-columns:repeat(2,1fr);} }
-@media (max-width:560px){ .node-grid{grid-template-columns:1fr;} }
+/* ---- 3D carousel shell ---- */
+.carousel3d{
+  position:relative; z-index:2;
+  display:flex; align-items:center; gap:.6rem;
+}
+.carousel3d-stage{
+  position:relative; flex:1; min-width:0; height:380px;
+  perspective:1400px; perspective-origin:50% 50%;
+  -webkit-user-select:none; user-select:none; touch-action:pan-y;
+  cursor:grab;
+}
+.carousel3d-stage.grabbing{cursor:grabbing;}
+.carousel3d-track{
+  position:absolute; inset:0; width:100%; height:100%;
+  transform-style:preserve-3d; will-change:transform;
+}
+.node-grid{
+  /* now the 3D track; each .node is absolutely positioned & rotated by JS */
+  position:absolute; inset:0; width:100%; height:100%;
+  transform-style:preserve-3d;
+}
 
 .node{
-  position:relative; background:var(--panel); border:1px solid var(--line-soft); border-radius:16px;
-  padding:1.5rem 1.4rem 1.4rem; overflow:hidden; transition:transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s ease, box-shadow .35s ease;
-  opacity:0; transform:translateY(24px) scale(.96);
+  position:absolute; top:50%; left:50%; width:min(320px,78vw); min-height:230px;
+  background:var(--panel); border:1px solid var(--line-soft); border-radius:16px;
+  padding:1.5rem 1.4rem 1.4rem; overflow:hidden;
+  transition:box-shadow .35s ease, border-color .35s ease;
+  backface-visibility:hidden;
+  will-change:transform, opacity, filter;
+  pointer-events:none;
 }
-.node.in{opacity:1; transform:translateY(0) scale(1);}
+.node.is-active{pointer-events:auto;}
 .node::before{
   content:''; position:absolute; inset:0; opacity:0; transition:opacity .4s ease; pointer-events:none;
   background:radial-gradient(circle at 30% 0%, var(--node-glow, rgba(242,177,58,0.16)), transparent 60%);
 }
-.node:hover{transform:translateY(-6px); border-color:var(--node-color, var(--gold)); box-shadow:0 20px 50px -18px rgba(0,0,0,0.7), 0 0 0 1px var(--node-color, var(--gold)) inset;}
-.node:hover::before{opacity:1;}
-.node.locked{opacity:.55; filter:grayscale(.4);}
-.node.locked:hover{transform:none; box-shadow:none;}
+.node.is-active:hover{border-color:var(--node-color, var(--gold)); box-shadow:0 20px 50px -18px rgba(0,0,0,0.7), 0 0 0 1px var(--node-color, var(--gold)) inset;}
+.node.is-active:hover::before{opacity:1;}
+.node.locked{filter:grayscale(.4);}
+
+/* ---- nav buttons ---- */
+.carousel3d-btn{
+  flex-shrink:0; width:46px; height:46px; border-radius:50%; z-index:5;
+  background:var(--panel); border:1px solid var(--line-soft); color:var(--ink);
+  display:flex; align-items:center; justify-content:center; font-size:1rem;
+  transition:border-color .25s ease, color .25s ease, transform .2s ease, background .25s ease;
+}
+.carousel3d-btn:hover{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+.carousel3d-btn:active{transform:scale(.92);}
+.carousel3d-btn:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+@media (max-width:640px){
+  .carousel3d-btn{width:38px; height:38px; font-size:.85rem;}
+  .carousel3d-stage{height:340px;}
+}
+
+/* ---- dots / progress ---- */
+.carousel3d-dots{display:flex; justify-content:center; gap:.5rem; margin-top:1.6rem;}
+.carousel3d-dot{width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.12); border:1px solid var(--line-soft); padding:0; transition:background .25s ease, border-color .25s ease, transform .25s ease;}
+.carousel3d-dot.active{background:var(--gold); border-color:var(--gold); transform:scale(1.25);}
+
+/* ---- swipe hint (mobile, shown briefly) ---- */
+.carousel3d-hint{
+  text-align:center; font-family:var(--ff-mono); font-size:.66rem; letter-spacing:.1em; color:var(--ink3);
+  margin-top:.9rem; display:none; align-items:center; justify-content:center; gap:.5rem;
+}
+@media (max-width:900px){ .carousel3d-hint{display:flex;} }
+.carousel3d-hint i{animation:swipehint 1.6s ease-in-out infinite;}
+@keyframes swipehint{0%,100%{transform:translateX(0); opacity:.5;} 50%{transform:translateX(6px); opacity:1;}}
 
 .node-top{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem;}
 .node-icn{width:46px; height:46px; border-radius:12px; background:var(--node-dim, var(--gold-dim)); border:1px solid var(--node-color, var(--gold)); display:flex; align-items:center; justify-content:center; font-size:1.25rem; color:var(--node-color, var(--gold)); flex-shrink:0;}
@@ -491,6 +541,10 @@ button{font-family:inherit; cursor:pointer;}
   </div>
 
   <div class="map-wrap">
+    <div class="carousel3d" data-carousel>
+      <button type="button" class="carousel3d-btn" data-car-prev aria-label="Proyecto anterior"><i class="fas fa-chevron-left"></i></button>
+      <div class="carousel3d-stage" data-car-stage>
+        <div class="carousel3d-track" data-car-track>
     <div class="node-grid" id="ownProjectsGrid">
       <!-- 01 -->
       <article class="node reveal-node" data-mid="p1" style="--node-color:#00b4d8; --node-dim:rgba(0,180,216,0.14); --node-glow:rgba(0,180,216,0.16);">
@@ -565,6 +619,12 @@ button{font-family:inherit; cursor:pointer;}
         <span class="node-lock-icn"><i class="fas fa-lock"></i> Clasificada</span>
       </article>
     </div>
+        </div>
+      </div>
+      <button type="button" class="carousel3d-btn" data-car-next aria-label="Siguiente proyecto"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="carousel3d-dots" data-car-dots></div>
+    <div class="carousel3d-hint"><i class="fas fa-arrows-left-right"></i> Desliza para explorar</div>
   </div>
 </section>
 </div>
@@ -581,6 +641,10 @@ button{font-family:inherit; cursor:pointer;}
   </div>
 
   <div class="map-wrap">
+    <div class="carousel3d" data-carousel>
+      <button type="button" class="carousel3d-btn" data-car-prev aria-label="Proyecto anterior"><i class="fas fa-chevron-left"></i></button>
+      <div class="carousel3d-stage" data-car-stage>
+        <div class="carousel3d-track" data-car-track>
     <div class="node-grid" id="thirdProjectsGrid">
       <article class="node reveal-node" data-mid="t1" style="--node-color:#00b4d8; --node-dim:rgba(0,180,216,0.14); --node-glow:rgba(0,180,216,0.16);">
         <span class="node-id">T·01</span>
@@ -618,6 +682,12 @@ button{font-family:inherit; cursor:pointer;}
         <span class="node-cta">Ver misión <i class="fas fa-arrow-right"></i></span>
       </article>
     </div>
+        </div>
+      </div>
+      <button type="button" class="carousel3d-btn" data-car-next aria-label="Siguiente proyecto"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="carousel3d-dots" data-car-dots></div>
+    <div class="carousel3d-hint"><i class="fas fa-arrows-left-right"></i> Desliza para explorar</div>
   </div>
 </section>
 </div>
@@ -982,7 +1052,10 @@ window.ONIX = { SFX, clamp, lerp, reduceMotion, isTouch, triggerWarp };
   }
 
   document.querySelectorAll('.node').forEach(node=>{
-    node.addEventListener('click', ()=>{ openMission(node.dataset.mid); window.ONIX.SFX.select(); });
+    node.addEventListener('click', (e)=>{
+      if(node.dataset.dragged==='1'){ e.preventDefault(); e.stopPropagation(); return; } // ignore click that was actually a drag/swipe
+      openMission(node.dataset.mid); window.ONIX.SFX.select();
+    }, true);
     node.addEventListener('mouseenter', ()=>{ if(!window.ONIX.isTouch) window.ONIX.SFX.hover(); });
     node.setAttribute('role','button'); node.setAttribute('tabindex','0');
     node.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openMission(node.dataset.mid); } });
@@ -990,21 +1063,176 @@ window.ONIX = { SFX, clamp, lerp, reduceMotion, isTouch, triggerWarp };
   modal.querySelectorAll('[data-mm-close]').forEach(el=>el.addEventListener('click', closeMission));
   window.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.classList.contains('open')) closeMission(); });
 
-  /* ---------- Reveal nodes on scroll ---------- */
+  /* ---------- Reveal whole carousels on scroll (fade/slide the wrap in) ---------- */
   const nodeObserver = new IntersectionObserver((entries)=>{
-    entries.forEach((entry,i)=>{
+    entries.forEach((entry)=>{
       if(entry.isIntersecting){
-        setTimeout(()=>entry.target.classList.add('in'), i*40);
+        entry.target.classList.add('in');
         nodeObserver.unobserve(entry.target);
       }
     });
-  }, {threshold:0.15});
-  document.querySelectorAll('.reveal-node').forEach(el=>nodeObserver.observe(el));
+  }, {threshold:0.1});
+  document.querySelectorAll('.reveal-node').forEach(el=>{ el.classList.add('in'); nodeObserver.observe(el); });
 
   const upObserver = new IntersectionObserver((entries)=>{
     entries.forEach(entry=>{ if(entry.isIntersecting) entry.target.classList.add('in'); });
   }, {threshold:0.2});
   document.querySelectorAll('.reveal-up').forEach(el=>upObserver.observe(el));
+
+  /* ══════════════════════════════════════════════════════════════
+     3D CAROUSEL — touch/drag + button navigation, desktop & mobile
+     ══════════════════════════════════════════════════════════════ */
+  function initCarousel3D(root){
+    const track  = root.querySelector('[data-car-track]');
+    const stage  = root.querySelector('[data-car-stage]');
+    const grid   = root.querySelector('.node-grid');
+    const items  = Array.from(grid.querySelectorAll('.node'));
+    const prevBtn= root.querySelector('[data-car-prev]');
+    const nextBtn= root.querySelector('[data-car-next]');
+    const dotsWrap = root.parentElement.querySelector('[data-car-dots]');
+    const count = items.length;
+    if(!count) return;
+
+    let radius = 420;          // distance of each card from the center (rotation axis)
+    let angleStep = 360 / count;
+    let current = 0;           // index of active/front card
+    let rotation = 0;          // current Y rotation of the whole track, in degrees
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartRotation = 0;
+    let lastDragX = 0;
+    let lastDragTime = 0;
+    let velocity = 0;
+    let moved = false;
+
+    function computeRadius(){
+      const w = stage.clientWidth;
+      // radius scales with stage width so cards don't overlap; tuned for card width ~320px
+      radius = Math.max(260, Math.min(560, w * 0.62));
+      angleStep = 360 / count;
+    }
+
+    function layout(){
+      computeRadius();
+      items.forEach((item, i)=>{
+        const angle = angleStep * i;
+        item.style.transform = `translate(-50%,-50%) rotateY(${angle}deg) translateZ(${radius}px)`;
+      });
+    }
+
+    function applyRotation(withTransition){
+      track.style.transition = withTransition ? 'transform .55s cubic-bezier(.2,.8,.2,1)' : 'none';
+      track.style.transform = `translateZ(-${radius}px) rotateY(${rotation}deg)`;
+      updateActiveStates();
+    }
+
+    function updateActiveStates(){
+      // normalize current index from rotation
+      let idx = Math.round((-rotation) / angleStep) % count;
+      if(idx < 0) idx += count;
+      current = idx;
+      items.forEach((item,i)=>{
+        const isActive = i===current;
+        item.classList.toggle('is-active', isActive);
+        // fade/scale non-active cards a bit for depth cueing
+        const angle = angleStep * i;
+        const relative = ((angle + rotation) % 360 + 360) % 360;
+        const distFromFront = Math.min(relative, 360-relative); // 0 = facing viewer
+        const t = distFromFront / 180; // 0..1
+        const scale = 1 - t*0.22;
+        const opacity = 1 - t*0.75;
+        item.style.opacity = opacity.toFixed(3);
+        item.style.filter = isActive ? 'none' : `brightness(${1 - t*0.55})`;
+        item.style.zIndex = String(Math.round((1-t)*100));
+        item.style.transform = `translate(-50%,-50%) rotateY(${angle}deg) translateZ(${radius}px) scale(${scale})`;
+      });
+      if(dotsWrap){
+        dotsWrap.querySelectorAll('.carousel3d-dot').forEach((d,i)=>d.classList.toggle('active', i===current));
+      }
+    }
+
+    function goTo(index, withTransition=true){
+      index = ((index % count) + count) % count;
+      rotation = -index * angleStep;
+      applyRotation(withTransition);
+    }
+
+    function next(){ goTo(current+1); window.ONIX && window.ONIX.SFX && window.ONIX.SFX.hover(); }
+    function prev(){ goTo(current-1); window.ONIX && window.ONIX.SFX && window.ONIX.SFX.hover(); }
+
+    prevBtn && prevBtn.addEventListener('click', prev);
+    nextBtn && nextBtn.addEventListener('click', next);
+
+    /* ---- dots ---- */
+    if(dotsWrap){
+      dotsWrap.innerHTML = items.map((_,i)=>`<button type="button" class="carousel3d-dot${i===0?' active':''}" data-dot="${i}" aria-label="Ir al proyecto ${i+1}"></button>`).join('');
+      dotsWrap.querySelectorAll('.carousel3d-dot').forEach(dot=>{
+        dot.addEventListener('click', ()=> goTo(parseInt(dot.dataset.dot,10)));
+      });
+    }
+
+    /* ---- pointer / touch drag (works for mouse on desktop AND touch on mobile) ---- */
+    function pointerDown(x){
+      dragging = true; moved = false;
+      dragStartX = x; lastDragX = x; lastDragTime = performance.now();
+      dragStartRotation = rotation; velocity = 0;
+      stage.classList.add('grabbing');
+      track.style.transition = 'none';
+    }
+    function pointerMove(x){
+      if(!dragging) return;
+      const dx = x - dragStartX;
+      if(Math.abs(dx) > 8) moved = true;
+      const now = performance.now();
+      const dt = now - lastDragTime || 16;
+      velocity = (x - lastDragX) / dt;
+      lastDragX = x; lastDragTime = now;
+      // sensitivity: full stage width drag ~= angleStep*1.6 degrees
+      const sensitivity = (angleStep * 1.6) / (stage.clientWidth || 300);
+      rotation = dragStartRotation + dx * sensitivity;
+      applyRotation(false);
+    }
+    function pointerUp(){
+      if(!dragging) return;
+      dragging = false;
+      stage.classList.remove('grabbing');
+      items.forEach(it=>it.dataset.dragged = moved ? '1' : '0');
+      if(moved){
+        // clear the flag on the next tick after the browser's synthetic click (if any) has fired
+        setTimeout(()=>items.forEach(it=>it.dataset.dragged='0'), 300);
+      }
+      // fling: project a bit further based on velocity, then snap to nearest card
+      const flingDeg = velocity * 120; // tune fling strength
+      rotation += flingDeg;
+      const nearest = Math.round((-rotation) / angleStep);
+      goTo(nearest, true);
+    }
+
+    // Mouse events (desktop drag)
+    stage.addEventListener('mousedown', e=>{ e.preventDefault(); pointerDown(e.clientX); });
+    window.addEventListener('mousemove', e=>{ if(dragging) pointerMove(e.clientX); });
+    window.addEventListener('mouseup', ()=>{ if(dragging) pointerUp(); });
+
+    // Touch events (mobile drag / swipe)
+    stage.addEventListener('touchstart', e=>{ pointerDown(e.touches[0].clientX); }, {passive:true});
+    stage.addEventListener('touchmove', e=>{ if(dragging){ pointerMove(e.touches[0].clientX); } }, {passive:true});
+    stage.addEventListener('touchend', ()=>{ pointerUp(); });
+    stage.addEventListener('touchcancel', ()=>{ pointerUp(); });
+
+    // Keyboard navigation when stage is focused
+    stage.setAttribute('tabindex','0');
+    stage.addEventListener('keydown', e=>{
+      if(e.key==='ArrowRight'){ e.preventDefault(); next(); }
+      if(e.key==='ArrowLeft'){ e.preventDefault(); prev(); }
+    });
+
+    window.addEventListener('resize', ()=>{ layout(); goTo(current, false); });
+
+    layout();
+    goTo(0, false);
+  }
+
+  document.querySelectorAll('[data-carousel]').forEach(initCarousel3D);
 })();
 
 /* ══════════════════════════════════════════════════════════════════
