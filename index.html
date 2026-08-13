@@ -811,8 +811,10 @@
     if(!canvas) return { setProgress(){} };
     const ctx = canvas.getContext('2d');
 
-    // Ajusta esta ruta a donde subas la carpeta "logo-frames" (ej. tu repo de GitHub)
-    const FRAME_BASE = 'logo-frames/frame_';
+    // Ajusta esta ruta a donde subas las carpetas "logo-frames" (móvil) y
+    // "logo-frames-desktop" (escritorio). Mismo breakpoint que el resto del
+    // sitio (768px, ver @media max-width:768px más arriba en el CSS).
+    const FRAME_BASE = window.innerWidth <= 768 ? 'logo-frames/frame_' : 'logo-frames-desktop/frame_';
     const FRAME_COUNT = 100;
     const FRAME_PAD = 3;
     const FRAME_EXT = '.jpg';
