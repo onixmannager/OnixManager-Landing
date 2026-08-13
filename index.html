@@ -987,14 +987,23 @@
   const thirdDriver = document.getElementById('thirdDriver');
   let videoAsBg = false;    // true mientras actúa de fondo en Mis Proyectos o Proyectos para terceros
 
-  // Frame fijo de "Mis Proyectos" (sin transición) y frame final, al que
+  // Frame de "Mis Proyectos" (sin transición) y frame final, al que
   // "Proyectos para terceros" llega de forma natural con su propio scroll.
-  const SECTION1_FRAME_INDEX = 33; // frame_034.jpg (índice = nº de frame - 1)
   const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 100) - 1;
   // El hero ahora termina su recorrido justo al 50% del vídeo (ver
   // updateHeroCube), así que la entrada a "Mis Proyectos" debe continuar
   // desde ESE frame real, no desde el último.
   const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 100));
+  // FIX: antes SECTION1_FRAME_INDEX era un valor fijo (33), menor que
+  // HERO_END_FRAME_INDEX (40 en escritorio con 80 frames, 50 en móvil con
+  // 100 frames) -- eso hacía que, al entrar en "Mis Proyectos", el tramo de
+  // más abajo (scrubFrame = HERO_END...SECTION1) recorriera la cámara HACIA
+  // ATRÁS (p.ej. 50 -> 33) antes de que "Proyectos para terceros" volviese a
+  // avanzar (33 -> 99). Igualando SECTION1_FRAME_INDEX a HERO_END_FRAME_INDEX
+  // ese tramo de entrada queda en 0 (ya no retrocede ni avanza: el frame de
+  // "Mis Proyectos" es el mismo con el que terminó el hero) y todo el
+  // recorrido posterior avanza siempre hacia delante hasta LAST_FRAME_INDEX.
+  const SECTION1_FRAME_INDEX = HERO_END_FRAME_INDEX;
   // FIX: estaba en 0 ("sin velo oscuro"), lo que dejaba el contraste de los
   // títulos (.eyebrow-glass / .h2-glass, fondo rgba(9,11,15,0.55)) a merced
   // de que la zona del frame de fondo detrás de ellos fuese oscura por
