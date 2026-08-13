@@ -268,6 +268,18 @@ button{font-family:inherit; cursor:pointer;}
   will-change:transform, opacity, filter;
   pointer-events:none;
 }
+/* On mobile, smaller/narrower cards leave more angular clearance between
+   neighbors in the 3D ring, so decks with many items (like "Mis proyectos")
+   don't overlap the way wider cards would. */
+@media (max-width:640px){
+  .node{width:min(240px,62vw); min-height:200px; padding:1.15rem 1rem 1rem;}
+  .node p{font-size:.82rem; min-height:2.4em; margin-bottom:.85rem;}
+  .node h3{font-size:.95rem;}
+  .node-icn{width:38px; height:38px; font-size:1.05rem;}
+}
+@media (max-width:400px){
+  .node{width:min(210px,58vw); min-height:190px;}
+}
 .node.is-active{pointer-events:auto;}
 .node::before{
   content:''; position:absolute; inset:0; opacity:0; transition:opacity .4s ease; pointer-events:none;
@@ -289,7 +301,7 @@ button{font-family:inherit; cursor:pointer;}
 .carousel3d-btn:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
 @media (max-width:640px){
   .carousel3d-btn{width:38px; height:38px; font-size:.85rem;}
-  .carousel3d-stage{height:340px;}
+  .carousel3d-stage{height:300px;}
 }
 
 /* ---- dots / progress ---- */
@@ -1107,9 +1119,16 @@ window.ONIX = { SFX, clamp, lerp, reduceMotion, isTouch, triggerWarp };
 
     function computeRadius(){
       const w = stage.clientWidth;
-      // radius scales with stage width so cards don't overlap; tuned for card width ~320px
-      radius = Math.max(260, Math.min(560, w * 0.62));
       angleStep = 360 / count;
+      // Actual rendered card width right now (min(320px,78vw), or the mobile override).
+      const sample = items[0];
+      const cardW = (sample && sample.getBoundingClientRect().width) || 320;
+      // Minimum radius so two neighboring cards (separated by angleStep) never overlap:
+      // they'd touch edge-to-edge at radius = (cardW/2) / tan(angleStep/2). We add margin
+      // on top of that so the effect always looks clean, regardless of how many cards exist.
+      const halfAngleRad = (angleStep / 2) * Math.PI / 180;
+      const minRadiusForCount = halfAngleRad > 0 ? ((cardW / 2) / Math.tan(halfAngleRad)) * 1.35 : 260;
+      radius = Math.max(220, minRadiusForCount, Math.min(560, w * 0.62));
     }
 
     function layout(){
