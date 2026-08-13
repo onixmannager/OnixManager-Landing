@@ -201,7 +201,15 @@
   .section-header .eyebrow-glass{
     background:rgba(9,11,15,0.72); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
     padding:.2rem .7rem; border-radius:6px; display:inline-block;
-    border:1px solid rgba(0,255,65,0.18); text-shadow:var(--tt-glow);
+    border:1px solid rgba(0,255,65,0.18);
+    /* Contorno oscuro sólido en varias direcciones (no solo blur difuso):
+       el eyebrow es del mismo verde (#00ff41) que las líneas del fondo
+       Matrix, así que un text-shadow difuso no basta para separarlo del
+       ruido de fondo -- se necesita un borde duro alrededor de cada letra. */
+    text-shadow:
+      -1px -1px 0 rgba(0,0,0,0.9), 1px -1px 0 rgba(0,0,0,0.9),
+      -1px 1px 0 rgba(0,0,0,0.9), 1px 1px 0 rgba(0,0,0,0.9),
+      0 0 8px rgba(0,0,0,0.9);
   }
   .section-header .h2-glass{
     background:rgba(9,11,15,0.68); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
