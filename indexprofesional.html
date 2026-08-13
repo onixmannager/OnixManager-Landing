@@ -125,7 +125,9 @@
      con clip-path y posicionado con rotateY (para las 4 orientaciones) +
      rotateX (para inclinar cada triángulo hacia el vértice) + translateZ.
      Más fiable en 3D real que intentar simular un cubo con top/bottom. */
-  .onix-gem{position:relative; width:200px; height:200px; transform-style:preserve-3d; will-change:transform; animation:onixSpin 22s linear infinite;}
+  /* ESTÁTICO: se quitó "animation:onixSpin..." y se fija el ángulo 3D con
+     transform directo, para poder mostrar el logo real sin que gire. */
+  .onix-gem{position:relative; width:200px; height:200px; transform-style:preserve-3d; will-change:transform; transform:rotateY(28deg) rotateX(-8deg);}
   @media (max-width:768px){ .onix-gem{width:140px; height:140px;} }
   .onix-facet{
     position:absolute; left:50%; top:50%; width:116px; height:116px; margin:-58px 0 0 -58px;
@@ -147,8 +149,20 @@
   .onix-ring{position:absolute; border:1px solid rgba(201,154,62,0.16); border-radius:50%; pointer-events:none;}
   .onix-ring.o1{width:340px; height:340px; top:50%; left:50%; transform:translate(-50%,-50%);}
   .onix-ring.o2{width:440px; height:440px; top:50%; left:50%; transform:translate(-50%,-50%); border-color:rgba(95,146,184,0.10);}
-  @keyframes onixSpin{from{transform:rotateY(0deg) rotateX(-8deg);} to{transform:rotateY(360deg) rotateX(-8deg);}}
-  @media (prefers-reduced-motion: reduce){ .onix-gem{animation:none; transform:rotateY(28deg) rotateX(-8deg);} }
+
+  /* Placa del logo: va DELANTE del octaedro (translateZ alto), con su
+     propia inclinación 3D fija a juego con .onix-gem, para que la imagen se
+     vea nítida y sin la distorsión que daría estamparla sobre una cara
+     triangular con clip-path. */
+  .onix-logo-plate{
+    position:absolute; left:50%; top:50%; width:150px; height:150px; margin:-75px 0 0 -75px;
+    transform-style:preserve-3d; transform:rotateY(28deg) rotateX(-8deg) translateZ(90px);
+    border-radius:8px; overflow:hidden; background:var(--surface);
+    border:1px solid rgba(201,154,62,0.35);
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.8), 0 0 40px -8px rgba(201,154,62,0.25);
+  }
+  @media (max-width:768px){ .onix-logo-plate{width:104px; height:104px; margin:-52px 0 0 -52px; transform:rotateY(28deg) rotateX(-8deg) translateZ(60px);} }
+  .onix-logo-plate img{width:100%; height:100%; object-fit:cover; display:block;}
 
   @media (max-width:768px){
     .hero{flex-direction:column-reverse; text-align:center; gap:1.5rem;}
