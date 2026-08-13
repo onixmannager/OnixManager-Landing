@@ -814,8 +814,9 @@
     // Ajusta esta ruta a donde subas las carpetas "logo-frames" (móvil) y
     // "logo-frames-desktop" (escritorio). Mismo breakpoint que el resto del
     // sitio (768px, ver @media max-width:768px más arriba en el CSS).
-    const FRAME_BASE = window.innerWidth <= 768 ? 'logo-frames/frame_' : 'logo-frames-desktop/frame_';
-    const FRAME_COUNT = 100;
+    const isDesktopFrames = window.innerWidth > 768;
+    const FRAME_BASE = isDesktopFrames ? 'logo-frames-desktop/frame_' : 'logo-frames/frame_';
+    const FRAME_COUNT = isDesktopFrames ? 80 : 100;
     const FRAME_PAD = 3;
     const FRAME_EXT = '.jpg';
 
