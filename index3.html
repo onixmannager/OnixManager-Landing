@@ -200,13 +200,19 @@
      tanto sobre fondo oscuro como sobre la zona más clara de prueba. */
   .section-header .eyebrow-glass{
     background:rgba(9,11,15,0.72); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-    padding:.2rem .7rem; border-radius:6px; display:inline-block;
-    border:1px solid rgba(0,255,65,0.18); text-shadow:var(--tt-glow);
+    padding:.25rem .8rem; border-radius:6px; display:inline-block;
+    border:1px solid rgba(0,255,65,0.18); font-size:.85rem; font-weight:700;
+    /* A .7rem (~11px reales) el trazo de la letra era tan fino que resultaba
+       ilegible con cualquier text-shadow (probado con blur 8px, 4px, y sin
+       blur) -- el problema no era el shadow sino que a ese tamaño el trazo
+       es demasiado fino para leerse sobre un fondo con blur detrás. Subir a
+       .85rem + negrita dan un trazo con grosor suficiente para ser nítido. */
+    text-shadow: 0 1px 0 rgba(0,0,0,1), 0 -1px 0 rgba(0,0,0,1), 1px 0 0 rgba(0,0,0,1), -1px 0 0 rgba(0,0,0,1);
   }
   .section-header .h2-glass{
     background:rgba(9,11,15,0.68); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
     padding:.2rem .6rem; border-radius:8px; display:inline; box-decoration-break:clone; -webkit-box-decoration-break:clone;
-    text-shadow:var(--tt-glow);
+    text-shadow:var(--tt-glow); line-height:1.5; margin-top:.9rem;
   }
   .section-header p{color:var(--text); margin-top:.8rem; max-width:560px; margin-left:auto; margin-right:auto;}
 
@@ -460,7 +466,7 @@
       <div>
         <div class="section-header" style="text-align:left; margin-bottom:2rem;">
           <div class="eyebrow eyebrow-glass">Mis proyectos</div>
-          <h2 class="h2-glass" style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem;">Plataformas y servicios activos que he creado</h2>
+          <h2 class="h2-glass" style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.9rem;">Plataformas y servicios activos que he creado</h2>
         </div>
         <div class="panel-text" id="proj-panel-text">
           <div class="facet-text active" data-i="0">
@@ -576,7 +582,7 @@
       <div>
         <div class="section-header" style="text-align:left; margin-bottom:2rem;">
           <div class="eyebrow eyebrow-glass">Proyectos para terceros</div>
-          <h2 class="h2-glass" style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.5rem;">Plataformas y servicios que he creado para terceros</h2>
+          <h2 class="h2-glass" style="font-family:var(--ff-display); font-size:clamp(1.6rem,3.4vw,2.2rem); color:var(--white); margin-top:.9rem;">Plataformas y servicios que he creado para terceros</h2>
         </div>
         <div class="panel-text" id="third-panel-text">
           <div class="facet-text active" data-i="0">
@@ -811,9 +817,12 @@
     if(!canvas) return { setProgress(){} };
     const ctx = canvas.getContext('2d');
 
-    // Ajusta esta ruta a donde subas la carpeta "logo-frames" (ej. tu repo de GitHub)
-    const FRAME_BASE = 'logo-frames/frame_';
-    const FRAME_COUNT = 80;
+    // Ajusta esta ruta a donde subas las carpetas "logo-frames" (móvil) y
+    // "logo-frames-desktop" (escritorio). Mismo breakpoint que el resto del
+    // sitio (768px, ver @media max-width:768px más arriba en el CSS).
+    const isDesktopFrames = window.innerWidth > 768;
+    const FRAME_BASE = isDesktopFrames ? 'logo-frames-desktop/frame_' : 'logo-frames/frame_';
+    const FRAME_COUNT = isDesktopFrames ? 80 : 100;
     const FRAME_PAD = 3;
     const FRAME_EXT = '.jpg';
 
@@ -981,11 +990,11 @@
   // Frame fijo de "Mis Proyectos" (sin transición) y frame final, al que
   // "Proyectos para terceros" llega de forma natural con su propio scroll.
   const SECTION1_FRAME_INDEX = 33; // frame_034.jpg (índice = nº de frame - 1)
-  const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 80) - 1;
+  const LAST_FRAME_INDEX = (sobreVideo.FRAME_COUNT || 100) - 1;
   // El hero ahora termina su recorrido justo al 50% del vídeo (ver
   // updateHeroCube), así que la entrada a "Mis Proyectos" debe continuar
   // desde ESE frame real, no desde el último.
-  const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 80));
+  const HERO_END_FRAME_INDEX = Math.floor(0.5 * (sobreVideo.FRAME_COUNT || 100));
   // FIX: estaba en 0 ("sin velo oscuro"), lo que dejaba el contraste de los
   // títulos (.eyebrow-glass / .h2-glass, fondo rgba(9,11,15,0.55)) a merced
   // de que la zona del frame de fondo detrás de ellos fuese oscura por
